@@ -1,0 +1,9 @@
+g1: kosta - preetam - vishal
+g2: sagar - dhruv - vinay
+g3: derek - kevin - sania
+g4: artur - sean - nam
+g5: ananya - amar - jing
+g6: parthi - robert - diana
+g7: naman - samarth - liuyang
+g8: cathy - alice - rhea
+g9: manyi - tingting - seth
