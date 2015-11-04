@@ -35,7 +35,7 @@ function draw_grid(min_x, min_y, max_x, max_y, rows, cols)
 	}
 }
 
-function draw_shape(min_x, min_y, max_x, max_y, rows, cols, patterns, points, colors)
+function draw_shape(min_x, min_y, max_x, max_y, rows, cols, patterns, points, colors, highlight)
 {
 	var canvas = document.getElementById("canvas");
 	var ctx = canvas.getContext("2d");
@@ -46,6 +46,7 @@ function draw_shape(min_x, min_y, max_x, max_y, rows, cols, patterns, points, co
 	// draw boxes
 	for (var i = 0 ; i != points.length ; ++i) {
 		var color = null;
+		var diagonals = highlight && (i + 1 == points.length);
 		for (var j = 0 ; j != patterns.length ; ++j)
 			if (points[i].length == patterns[j].length) {
 				color = colors[j];
@@ -76,6 +77,16 @@ function draw_shape(min_x, min_y, max_x, max_y, rows, cols, patterns, points, co
 			if (color != null) {
 				ctx.fillStyle = color;
 				ctx.fill();
+			}
+			if (diagonals == true) {
+				ctx.beginPath();
+				ctx.moveTo(x1, y1);
+				ctx.lineTo(x2, y2);
+				ctx.stroke();
+				ctx.beginPath();
+				ctx.moveTo(x1, y2);
+				ctx.lineTo(x2, y1);
+				ctx.stroke();
 			}
 		}
 	}
@@ -143,12 +154,14 @@ function process(data)
 	// parse data
 	data = data.split("\n");
 	if (data.length < 3)
-		throw "Invalid data format (less than 3 lines)";
+		throw "Invalid data format";
 	for (var i = 0 ; i != data.length ; ++i)
 		data[i] = data[i].split(",");
-	if (data[0].length != 5 || data[1].length != 5)
-		throw "Invalid group data format";
-	var refresh = parse_int(data[data.length - 1]);
+	var i = data.length - 1;
+	if (data[0].length != 5 || data[1].length != 5 || data[i].length != 2)
+		throw "Invalid data format";
+	var refresh   = parse_int(data[i][0]);
+	var highlight = parse_int(data[i][1]);
 	if (refresh < 0.0) refresh = -1;
 	else refresh = Math.round(refresh);
 	var group_1 = data[0][0].trim();
@@ -164,7 +177,7 @@ function process(data)
 	if (n_cuts_1 + n_cutters_1 + 3 +
 	    n_cuts_2 + n_cutters_2 != data.length)
 		throw "Invalid data format (invalid total lines)"
-	var i = 2;
+	i = 2;
 	var cutters_1 = [], cuts_1 = [];
 	var cutters_2 = [], cuts_2 = [];
 	for (var j = 0 ; j != n_cutters_1 ; ++i, ++j)
@@ -180,12 +193,12 @@ function process(data)
 	draw_grid(250, 50, 850, 650, 50, 50, "black");
 	// draw for 1st player
 	var colors_1 = ["salmon", "red", "darkred"];
-	var colors_2 = ["greenyellow", "lawngreen", "darkgreen"];
+	var colors_2 = ["greenyellow", "olive", "darkgreen"];
 	draw_side ( 20,  40,  190, 690, group_1, score_1, cpu_1, cutters_1, colors_1);
-	draw_shape(250,  50,  850, 650, 50, 50, cutters_1, cuts_1, colors_1);
+	draw_shape(250,  50,  850, 650, 50, 50, cutters_1, cuts_1, colors_1, highlight == 0);
 	// draw for 2nd player
 	draw_side (920,  40, 1090, 690, group_2, score_2, cpu_2, cutters_2, colors_2);
-	draw_shape(250,  50,  850, 650, 50, 50, cutters_2, cuts_2, colors_2);
+	draw_shape(250,  50,  850, 650, 50, 50, cutters_2, cuts_2, colors_2, highlight == 1);
 	return refresh;
 }
 

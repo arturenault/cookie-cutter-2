@@ -3,10 +3,10 @@ package cc2.sim;
 public class Dough {
 
 	// the array
-	private boolean[][] dough;
+	protected boolean[][] dough;
 
 	// number of cuts
-	private boolean uncut;
+	protected int n_cuts;
 
 	// create new Dough
 	public Dough(int side)
@@ -14,10 +14,10 @@ public class Dough {
 		if (side <= 0)
 			throw new IllegalArgumentException();
 		dough = new boolean [side][side];
-		uncut = true;
+		n_cuts = 0;
 	}
 
-	// return number of rows
+	// return number of rows and columns
 	public int side()
 	{
 		return dough.length;
@@ -26,7 +26,13 @@ public class Dough {
 	// return if whole dough is uncut
 	public boolean uncut()
 	{
-		return uncut;
+		return n_cuts == 0;
+	}
+
+	// return how much of the dough is cut
+	public int countCut()
+	{
+		return n_cuts;
 	}
 
 	// check if specific position can be cut
@@ -51,9 +57,10 @@ public class Dough {
 	{
 		if (!cuts(shape, q))
 			return false;
-		for (Point p : shape)
+		for (Point p : shape) {
 			dough[p.i + q.i][p.j + q.j] = true;
-		uncut = false;
+			n_cuts++;
+		}
 		return true;
 	}
 }

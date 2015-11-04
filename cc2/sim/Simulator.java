@@ -14,12 +14,13 @@ class Simulator {
 	public static void main(String[] args)
 	{
 		boolean gui = false;
-		boolean recompile = false;
+		boolean gui_manual_refresh_on_cutter = false;
 		String group_1 = "g0";
 		String group_2 = "g0";
 		Class <Player> class_1 = null;
 		Class <Player> class_2 = null;
-		long[] timeout = new long [] {1000, 10000, 1000};
+		long[] timeout = new long [] {0, 0, 0};
+		// long[] timeout = new long [] {1000, 10000, 1000};
 		long gui_refresh = 250;
 		try {
 			for (int a = 0 ; a != args.length ; ++a)
@@ -42,7 +43,9 @@ class Simulator {
 					if (++a == args.length)
 						throw new IllegalArgumentException("Missing cut timeout");
 					timeout[2] = Long.parseLong(args[a]);
-				} else if (args[a].equals("--gui")) gui = true;
+				} else if (args[a].equals("--gui-mrc"))
+					gui = gui_manual_refresh_on_cutter = true;
+				else if (args[a].equals("--gui")) gui = true;
 				else throw new IllegalArgumentException("Unknown argument: " + args[a]);
 			class_1 = load(group_1);
 			class_2 = group_1.equals(group_2) ? class_1 : load(group_2);
@@ -65,7 +68,8 @@ class Simulator {
 		int[] score = null;
 		try {
 			score = play(group_1, group_2, class_1, class_2,
-			             gui, gui_refresh, timeout, 11, 8, 5);
+			             gui, gui_manual_refresh_on_cutter,
+			             gui_refresh, timeout, 11, 8, 5);
 		} catch (Exception e) {
 			System.err.println("Exception during play: " + e.getMessage());
 			e.printStackTrace();
@@ -82,6 +86,7 @@ class Simulator {
 	                          Class <Player> class_1,
 	                          Class <Player> class_2,
 	                          boolean gui,
+	                          boolean gui_manual_refresh_on_cutter,
 	                          long gui_refresh,
 	                          long[] timeout,
 	                          int ... cutter_sizes) throws Exception
@@ -122,7 +127,7 @@ class Simulator {
 			}
 			gui(server, state(group_1, 0, 0, cutters_1, cuts_1,
 			                  group_2, 0, 0, cutters_2, cuts_2,
-			                  gui_refresh));
+			                  gui_refresh, -1));
 		}
 		// start cutter selection
 		Random gen = new Random();
@@ -141,13 +146,14 @@ class Simulator {
 					cutters_2.add(cutters_retry[j]);
 					break;
 				}
+				Shape[] shape = new Shape [2];
 				for (int p = 0 ; p != 2 ; ++p) {
 					// get next cutter of player
 					int size = cutter_sizes[c];
 					Shape[] your_cutters = (p == 0 ? cutters_1 : cutters_2).toArray(new Shape [0]);
 					Shape[] oppo_cutters = (p == 0 ? cutters_2 : cutters_1).toArray(new Shape [0]);
 					Player player = players[p];
-					Shape shape = timer[p].call(new Callable <Shape> () {
+					shape[p] = timer[p].call(new Callable <Shape> () {
 
 						public Shape call() throws Exception
 						{
@@ -155,27 +161,27 @@ class Simulator {
 						}
 					}, timeout[1]);
 					// generate shape and check if repeated
-					if (shape.size() != size)
+					if (shape[p].size() != size)
 						throw new RuntimeException("Invalid cutter size");
 					for (int rr = 0 ; rr != r ; ++rr)
-						if (shape.equals(cutters_retry[rr]))
+						if (shape[p].equals(cutters_retry[rr]))
 							throw new RuntimeException("Repeated cutter");
-					List <Shape> cutters = p == 0 ? cutters_1 : cutters_2;
-					cutters.add(shape);
 					if (!gui) continue;
+					cutters_1.add(shape[0]);
+					if (p == 1) cutters_2.add(shape[1]);
 					gui(server, state(group_1, 0, timer[0].time(), cutters_1, cuts_1,
 			    	                  group_2, 0, timer[1].time(), cutters_2, cuts_2,
-			    	                  gui_refresh));
+			    	                  gui_manual_refresh_on_cutter ? -1 : gui_refresh, -1));
+					cutters_1.remove(cutters_1.size() - 1);
+					if (p == 1) cutters_2.remove(cutters_2.size() - 1);
 				}
-				// check if cutters differ
-				int i = cutters_1.size() - 1;
-				Shape s1 = cutters_1.get(i);
-				Shape s2 = cutters_2.get(i);
-				if (!s1.equals(s2)) break;
-				System.err.println("Same cutter shape: " + s1);
-				cutters_1.remove(i);
-				cutters_2.remove(i);
-				cutters_retry[r] = s1;
+				if (!shape[0].equals(shape[1])) {
+					cutters_1.add(shape[0]);
+					cutters_2.add(shape[1]);
+					break;
+				}
+				System.err.println("Same cutter shape: " + shape[0]);
+				cutters_retry[r] = shape[0];
 			}
 			System.err.println("Player 1 cutter: " + cutters_1.get(c));
 			System.err.println("Player 2 cutter: " + cutters_2.get(c));
@@ -218,7 +224,8 @@ class Simulator {
 				Shape[] your_cutters = (p == 0 ? cutters_1 : cutters_2).toArray(new Shape [0]);
 				Shape[] oppo_cutters = (p == 0 ? cutters_2 : cutters_1).toArray(new Shape [0]);
 				// call the cut() method of player
-				Player player = players[p];;
+				Player player = players[p];
+				int dough_cut = dough.countCut();
 				Move cut = timer[p].call(new Callable <Move> () {
 
 					public Move call() throws Exception
@@ -226,6 +233,9 @@ class Simulator {
 						return player.cut(dough, your_cutters, oppo_cutters);
 					}
 				}, timeout[2]);
+				// check if player cut the Dough
+				if (dough.countCut() != dough_cut)
+					throw new RuntimeException("Player cut the simulator dough");
 				// check if shape is valid
 				List <Shape> cutters = p == 0 ? cutters_1 : cutters_2;
 				if (cut.shape < 0 || cut.shape >= cutters.size())
@@ -256,8 +266,8 @@ class Simulator {
 				List <Move> cuts = p == 0 ? cuts_1 : cuts_2;
 				cuts.add(cut);
 				gui(server, state(group_1, score[0], timer[0].time(), cutters_1, cuts_1,
-			                      group_2, score[1], timer[1].time(), cutters_2, cuts_2,
-			                      gui_refresh));
+				                  group_2, score[1], timer[1].time(), cutters_2, cuts_2,
+				                  gui_refresh, p));
 			}
 		} while (!no_cuts[0] || !no_cuts[1]);
 		// final GUI frame
@@ -265,7 +275,7 @@ class Simulator {
 			gui_refresh = -1;
 			gui(server, state(group_1, score[0], timer[0].time(), cutters_1, cuts_1,
 			    	          group_2, score[1], timer[1].time(), cutters_2, cuts_2,
-			    	          gui_refresh));
+			    	          gui_refresh, -1));
 			server.close();
 		}
 		return score;
@@ -273,7 +283,7 @@ class Simulator {
 
 	public static String state(String group_1, int score_1, long cpu_1, List <Shape> cutters_1, List <Move> cuts_1,
 	                           String group_2, int score_2, long cpu_2, List <Shape> cutters_2, List <Move> cuts_2,
-	                           long gui_refresh)
+	                           long gui_refresh, int highlight)
 	{
 		StringBuffer buf = new StringBuffer();
 		buf.append(group_1 + ", " + score_1 + ", " + human_no_power(cpu_1 / 1.0e9, 2)
@@ -300,7 +310,7 @@ class Simulator {
 			buf.append(s.toString(m.point, false));
 			buf.append("\n");
 		}
-		buf.append(gui_refresh);
+		buf.append(gui_refresh + ", " + highlight);
 		return buf.toString();
 	}
 
