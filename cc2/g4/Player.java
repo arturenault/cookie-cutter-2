@@ -60,8 +60,9 @@ public class Player implements cc2.sim.Player {
           if (max_j < p.j) max_j = p.j;
         }
 
-        int height = max_i - min_i + 1;
-        int width = max_j - min_j + 1;
+        int maxPadding = 4
+        int height = max_i - min_i + maxPadding;
+        int width = max_j - min_j + maxPadding;
 
         System.out.println("height: " + height +", width: " + width);
         boolean[][] opp = new boolean[height][width];
@@ -74,16 +75,13 @@ public class Player implements cc2.sim.Player {
         }
 
         int count = 0;
-        for (int threshold = 0; threshold < 4; threshold++) {
+        for (int threshold = 0; threshold < maxPadding; threshold++) {
           for (int i = 0; i < height + threshold && count < length; i++) {
             for (int j = 0; j < width + threshold && count < length; j++) {
               if(!opp[i][j]) {
-                cutter[count++] =  new Point(i,j);
+                cutter[count++] = new Point(i,j);
               }
             }
-          }
-          for (int i = 0; i < length; i++) {
-            System.out.println("(" + cutter[i].i + ", " + cutter[i].j + ")");
           }
           if (Point.shape(cutter)) {
             return new Shape(cutter);
