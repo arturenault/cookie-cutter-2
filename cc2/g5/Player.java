@@ -9,6 +9,11 @@ import java.util.*;
 
 public class Player implements cc2.sim.Player {
 
+    private ArrayList<Move> moveHistory = new ArrayList<>();
+    private PriorityQueue<MoveCosts> priorityQueue;
+
+    public static final int NUMBER_OF_MOVES = 250;
+
     public Shape cutter(int length, Shape[] shapes, Shape[] opponentShapes) {
         Shape shape = null;
         if (length == 11) {
@@ -19,61 +24,67 @@ public class Player implements cc2.sim.Player {
             shape = ShapeGenerator.getNextFiveShape(shapes, opponentShapes);
         }
 
-        System.out.println("Shape:" + shape);
         return shape;
     }
 
-    public Move getBestMove(Dough dough, ArrayList<Move> elevenMoves, ArrayList<Move> eightMoves, ArrayList<Move> fiveMoves){
-        if(dough.uncut()){
-        	return fiveMoves.get(0);
+    public Move cut(Dough dough, Shape[] shapes, Shape[] opponentShapes) {
+        priorityQueue = new PriorityQueue<>(new MoveComparator(shapes, opponentShapes, dough, moveHistory));
+
+        HashMap<Integer, ArrayList<Move>> moveSet = Utils.generateMoves(dough, shapes);
+
+        ArrayList<Move> elevenMoves = moveSet.get(11);
+        ArrayList<Move> eightMoves = moveSet.get(8);
+        ArrayList<Move> fiveMoves = moveSet.get(5);
+
+        if (dough.uncut()) {
+            priorityQueue.add(new MoveCosts(fiveMoves.get(0), 0, 0));
+        } else if (elevenMoves.size() != 0) {
+            pushToPriorityQueue(priorityQueue, elevenMoves, dough, shapes, opponentShapes);
+
+        } else if (eightMoves.size() != 0) {
+            pushToPriorityQueue(priorityQueue, eightMoves, dough, shapes, opponentShapes);
+
+        } else if (fiveMoves.size() != 0) {
+            pushToPriorityQueue(priorityQueue, fiveMoves, dough, shapes, opponentShapes);
+
         }
-    	if(elevenMoves.size() > 0) {
-    		if(elevenMoves.size() > 1)
-    			return elevenMoves.get(1);
-            return elevenMoves.get(0);
-        } else if(eightMoves.size() > 0){
-        	if(eightMoves.size() > 1)
-    			return eightMoves.get(1);
-            return eightMoves.get(0);
-        } else {
-        	if(fiveMoves.size() > 1)
-    			return fiveMoves.get(1);
-            return fiveMoves.get(0);
-        }
+
+        Move nextMove = priorityQueue.poll().move;
+
+        moveHistory.add(nextMove);
+
+        return nextMove;
     }
 
-    public Move cut(Dough dough, Shape[] shapes, Shape[] opponent_shapes) {
+    public void pushToPriorityQueue(PriorityQueue<MoveCosts> priorityQueue, ArrayList<Move> moves, Dough dough, Shape[] cutters, Shape[] oppCutters){
 
-        ArrayList<Move> elevenMoves = new ArrayList<>();
-        ArrayList<Move> eightMoves = new ArrayList<>();
-        ArrayList<Move> fiveMoves = new ArrayList<>();
+        int i = 0;
+        for(Move m : moves){
+            if(i++ == NUMBER_OF_MOVES)
+                break;
 
-        for (int shapeNumber = 0; shapeNumber < shapes.length; shapeNumber++) {
-        	Shape[] rotations = shapes[shapeNumber].rotations();
-        	 for (int rotNumber = 0; rotNumber < rotations.length; rotNumber++) {
-		        for (int i = 0; i < dough.side(); i++) {
-		            for (int j = 0; j < dough.side(); j++) {
-		                Point p = new Point(i, j);
-                        if (dough.cuts(rotations[rotNumber], p)) {
-                            switch (shapes[shapeNumber].size()) {
-                                case 11:
-                                    elevenMoves.add(new Move(shapeNumber, rotNumber, p));
-                                    break;
-                                case 8:
-                                    eightMoves.add(new Move(shapeNumber, rotNumber, p));
-                                    break;
-                                case 5:
-                                default:
-                                    fiveMoves.add(new Move(shapeNumber, rotNumber, p));
-                                    break;
-                            }
-                        }
-                    }
-                }
-            }
+            ModdableDough mDough = new ModdableDough(dough);
+            mDough.cut(cutters[m.shape].rotations()[m.rotation], m.point);
+
+            int playerMoves = Utils.totalMoves(Utils.generateMoves(mDough, cutters));
+            int opponentMoves = Utils.totalMoves(Utils.generateMoves(mDough, oppCutters));
+
+            priorityQueue.add(new MoveCosts(m, playerMoves, opponentMoves));
+
         }
 
-        return getBestMove(dough, elevenMoves, eightMoves, fiveMoves);
+    }
 
+    public void pushToPriorityQueue(ArrayList<Move> moves, PriorityQueue<MoveCosts> priorityQueue) {
+        int count = 0;
+
+
+        for (Move move : moves) {
+            if (count > 20)
+                break;
+            priorityQueue.add(new MoveCosts(move, 0, 0));
+            count++;
+            System.out.println(move.shape + " " + move.rotation + " " + move.point.i + " " + move.point.j);
+        }
     }
 }
