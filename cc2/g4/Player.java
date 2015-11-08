@@ -28,7 +28,7 @@ public class Player implements cc2.sim.Player {
         mold[i][0] = true;
         mold[i][3] = true;
       }
-      mold[gen.nextInt(1)+1][gen.nextInt(2)+1] = true;
+      mold[gen.nextInt(3)+1][gen.nextInt(2)+1] = true;
       int count = 0;
       for (int i = 0; i < mold.length; i++) {
         for (int j = 0; j < mold[i].length; j++) {
