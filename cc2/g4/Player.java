@@ -60,7 +60,7 @@ public class Player implements cc2.sim.Player {
           if (max_j < p.j) max_j = p.j;
         }
 
-        int maxPadding = 4
+        int maxPadding = 4;
         int height = max_i - min_i + maxPadding;
         int width = max_j - min_j + maxPadding;
 
@@ -107,7 +107,7 @@ public class Player implements cc2.sim.Player {
         }
       } else {
         int count = 0;
-        for (int i = 0; i < 5; i++) {
+        for (int i = 0; i < 4; i++) {
           cutter[count++] = new Point(i, 0);
         }
         int extra = gen.nextInt(4);
