@@ -13,10 +13,20 @@ public class Player implements cc2.sim.Player {
 
   private Random gen = new Random();
 
+  private boolean firstRun = false;
+
   private int lastLength = 0;
+
+  private Queue<Shape> backup8shapes;
 
   public Shape cutter(int length, Shape[] shapes, Shape[] opponent_shapes)
   {
+    if (firstRun = true) {
+      firstRun = false;
+
+      populateBackup8Shapes();
+    }
+
     Point[] cutter = new Point[length];
     /* If length is 11, build the mold we want to use for the
      * big and small shapes */
@@ -38,61 +48,66 @@ public class Player implements cc2.sim.Player {
         }
       }
 
-      /* Create just one long general shape for 8 */
+      /* Create a shape that fits with the other team's 11 for 8 */
     } else if (length == 8) {
       if (lastLength != 8) {
         lastLength = 8;
 
         Shape opponent11 = opponent_shapes[0];
 
+
+        /* Build "convex hull" of 11-shape */
         int min_i = Integer.MAX_VALUE;
         int min_j = Integer.MAX_VALUE;
         int max_i = Integer.MIN_VALUE;
         int max_j = Integer.MIN_VALUE;
-
         Iterator<Point> iter = opponent11.iterator();
-
         while(iter.hasNext()) {
           Point p = iter.next();
-          if (min_i > p.i) min_i = p.i;
-          if (max_i < p.i) max_i = p.i;
-          if (min_j > p.j) min_j = p.j;
-          if (max_j < p.j) max_j = p.j;
+          if (p.i < min_i) min_i = p.i;
+          if (p.i > max_i) max_i = p.i;
+          if (p.j < min_j) min_j = p.j;
+          if (p.j > max_j) max_j = p.j;
         }
 
         int maxPadding = 4;
-        int height = max_i - min_i + maxPadding;
-        int width = max_j - min_j + maxPadding;
+        int height = max_i - min_i;
+        int width = max_j - min_j;
 
-        System.out.println("height: " + height +", width: " + width);
-        boolean[][] opp = new boolean[height][width];
+        boolean[][] opp = new boolean[height + maxPadding][width + maxPadding];
 
         iter = opponent11.iterator();
         while (iter.hasNext()) {
           Point p = iter.next();
-          System.out.println("point i: " + p.i + ", width: " + p.j);
           opp[p.i - min_i][p.j - min_j] = true;
         }
 
         int count = 0;
-        for (int threshold = 0; threshold < maxPadding; threshold++) {
-          for (int i = 0; i < height + threshold && count < length; i++) {
-            for (int j = 0; j < width + threshold && count < length; j++) {
-              if(!opp[i][j]) {
-                cutter[count++] = new Point(i,j);
+        for (int thresholdi = 0; thresholdi < maxPadding; thresholdi++) {
+          for (int thresholdj = 0; thresholdj < maxPadding; thresholdj++) {
+            for (int i = 0; i < height + thresholdi && count < length; i++) {
+              for (int j = 0; j < width + thresholdj && count < length; j++) {
+                if(!opp[i][j]) {
+                  cutter[count++] = new Point(i,j);
+                }
               }
             }
-          }
-          if (Point.shape(cutter)) {
-            return new Shape(cutter);
+            if (Point.shape(cutter)) {
+              return new Shape(cutter);
+            }
           }
         }
       }
-      for (int i = 0; i < length; i++) {
-        cutter[i] = new Point(i / 4, i % 4);
+      Shape shape = backup8shapes.poll();
+      if (shape == null) {
+        int count;
+        for (count = 0; count < length - 1; count++) {
+          cutter[count] = new Point(count, 0);
+        }
+        cutter[count] = new Point(gen.nextInt(count), 1);
+        shape = new Shape(cutter);
       }
-      return new Shape(cutter);
-
+      return shape;
       /* Build opposite of 11-sized shape */ 
     } else {
       if (lastLength != 5) {
@@ -165,5 +180,30 @@ public class Player implements cc2.sim.Player {
     }
     // return a cut randomly
     return moves.get(0);
+  }
+
+  private void populateBackup8Shapes() {
+    backup8shapes = new java.util.concurrent.ConcurrentLinkedQueue<Shape>();
+
+    Point[] points = new Point[8];
+    Shape shape;
+
+    for(int i = 0; i < points.length; i++) {
+      points[i] = new Point(i, 0);
+    }
+    shape = new Shape(points);
+    backup8shapes.add(shape);
+
+    for(int i = 0; i < points.length; i++) {
+      points[i] = new Point(i / 4, i % 4);
+    }
+    shape = new Shape(points);
+    backup8shapes.add(shape);
+
+    for(int i = 0; i < points.length; i++) {
+      points[i] = new Point(i / 3, i % 3);
+    }
+    shape = new Shape(points);
+    backup8shapes.add(shape);
   }
 }
