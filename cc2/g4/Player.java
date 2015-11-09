@@ -190,21 +190,9 @@ public class Player implements cc2.sim.Player {
           for (int ri = 0 ; ri != rotations.length ; ++ri) {
             Shape s = rotations[ri];
             if (dough.cuts(s, p)) {
-              if (mode == 0 && s.size() == 11 && ri == 2) {
-                int latitude = i - 1;
-                if (latitude < 0) {
+              if (mode == 0 && s.size() == 11) {
+                if (isIdeal(dough, ri, i, j)) {
                   idealMoves.add(new Move(si, ri, p));
-                } else {
-                  boolean ideal = true;
-                  for (int longitude = p.j + 1; longitude < p.j + 3; longitude++) {  
-                    if (!dough.uncut(latitude + 1, longitude)) {
-                      ideal = false;
-                      break;
-                    }
-                  }
-                  if (ideal) {
-                    idealMoves.add(new Move(si, ri, p));
-                  }
                 }
               } else if (mode == 1 && s.size() == 11) {
                 return new Move(si, ri, p);
@@ -216,13 +204,36 @@ public class Player implements cc2.sim.Player {
       }
     }
     if (!idealMoves.isEmpty()) {
-      // if (oppPlayed) {
-      //   return aggressiveCut(shapes, opponent_shapes, idealMoves);
-      // }
+      if (oppPlayed) {
+        return aggressiveCut(shapes, opponent_shapes, idealMoves);
+      }
       // return idealMoves.get(idealMoves.size() - 1);
-      return idealMoves.get(0);
+      // return idealMoves.get(0);
     }
     return moves.get(0);
+  }
+
+  private boolean isIdeal(Dough dough, int rotation, int i, int j) {
+    switch (rotation) {
+      case 0:
+        if (i + 3 == dough.side() - 1 ||
+          (!dough.uncut(i + 4, j + 1) && !dough.uncut(i + 4, j + 2)))
+          return true;
+        return false;
+      case 1:
+        // if (j == 0 ||
+        //   (!dough.uncut(i + 1, j - 1) && !dough.uncut(i + 2, j - 1)))
+        //   return true;
+        return false;
+      case 2:
+        if (i == 0 ||
+          (!dough.uncut(i - 1, j + 1) && !dough.uncut(i - 1, j + 2)))
+          return true;
+        return false;
+      case 3:
+        return false;
+    }
+    return false;
   }
 
   private void populateBackup8Shapes() {
@@ -256,20 +267,19 @@ public class Player implements cc2.sim.Player {
    */
   private Move aggressiveCut(Shape[] shapes, Shape[] opponent_shapes, ArrayList<Move> moves) {
     Move m1 = oppMoves.get(oppMoves.size() - 1);  // opponent last move
-    System.out.println("here");
 
     Set<Point> aggressivePoints = getAggressivePoints(opponent_shapes[m1.shape].rotations()[m1.rotation], m1.point);
     for (Move move : moves) {
       Set<Point> ourPoints = getAggressivePoints(shapes[move.shape].rotations()[move.rotation], move.point);
       for (Point p : ourPoints) {
         if (aggressivePoints.contains(p)) {
-          System.out.println("found aggressive move!");
+          // System.out.println("found aggressive move!");
           return move;
         }
       }
     }
 
-    System.out.println("can't find shit");
+    // System.out.println("can't find aggressive move");
     return moves.get(0);
   }
 
@@ -277,6 +287,9 @@ public class Player implements cc2.sim.Player {
     return (int) Math.sqrt(Math.pow((p1.i - p2.i),2) + Math.pow((p1.j - p2.j),2));
   }
 
+  /**
+   * Get the neighbors of a shape at point q
+   */
   private Set<Point> getAggressivePoints(Shape shape, Point q) {
     Set<Point> res = new HashSet<Point>();
     for (Point p : shape) {
@@ -287,6 +300,10 @@ public class Player implements cc2.sim.Player {
     return res;
   }
 
+  /**
+   * Get the last move of opponent, put it in lastDough
+   * Return true if succeed, false otherwise
+   */
   private boolean getOppMove(Dough dough, Shape[] opponent_shapes) {
     int mShape;
     int mRotation = -1;
