@@ -13,7 +13,7 @@ public class Player implements cc2.sim.Player {
 
   private Random gen = new Random();
 
-  private boolean firstRun = false;
+  private boolean firstRun = true;
 
   private int lastLength = 0;
 
@@ -25,7 +25,7 @@ public class Player implements cc2.sim.Player {
 
   public Shape cutter(int length, Shape[] shapes, Shape[] opponent_shapes)
   {
-    if (firstRun = true) {
+    if (firstRun) {
       firstRun = false;
 
       populateBackup8Shapes();
@@ -86,9 +86,9 @@ public class Player implements cc2.sim.Player {
           opp[p.i - min_i][p.j - min_j] = true;
         }
 
-        int count = 0;
         for (int thresholdi = 0; thresholdi < maxPadding; thresholdi++) {
           for (int thresholdj = 0; thresholdj < maxPadding; thresholdj++) {
+            int count = 0;
             for (int i = 0; i < height + thresholdi && count < length; i++) {
               for (int j = 0; j < width + thresholdj && count < length; j++) {
                 if(!opp[i][j]) {
@@ -97,7 +97,14 @@ public class Player implements cc2.sim.Player {
               }
             }
             if (Point.shape(cutter)) {
-              System.out.println("g4 (1) " + length + ": " + new Shape(cutter));
+              Shape shape = new Shape(cutter);
+              iter = opponent11.iterator();
+              while (iter.hasNext()) {
+                System.out.println(iter.next());
+              } 
+              if (shape.equals(backup8shapes.peek())) {
+                backup8shapes.poll();
+              }
               return new Shape(cutter);
             }
           }
@@ -115,7 +122,7 @@ public class Player implements cc2.sim.Player {
       System.out.println("g4 (2) " + length + ": " + shape);
       return shape;
       /* Build opposite of 11-sized shape */ 
-    } else {
+    } else { 
       if (lastLength != 5) {
         lastLength = 5;
         int count = 0;
@@ -132,7 +139,7 @@ public class Player implements cc2.sim.Player {
           cutter[count++] = new Point(i, 0);
         }
         int extra = gen.nextInt(4);
-        cutter[count] = new Point(1, extra);
+        cutter[count] = new Point(extra, 1);
       }
     }
     System.out.println("g4 (3) " + length + ": " + new Shape(cutter));
@@ -353,7 +360,7 @@ public class Player implements cc2.sim.Player {
       }
     }
 
-  return -1;
+    return -1;
   }
 
 }
