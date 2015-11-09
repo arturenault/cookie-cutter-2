@@ -221,9 +221,9 @@ public class Player implements cc2.sim.Player {
           return true;
         return false;
       case 1:
-        // if (j == 0 ||
-        //   (!dough.uncut(i + 1, j - 1) && !dough.uncut(i + 2, j - 1)))
-        //   return true;
+        if (j == 0 ||
+          (!dough.uncut(i + 1, j - 1) && !dough.uncut(i + 2, j - 1)))
+          return true;
         return false;
       case 2:
         if (i == 0 ||
@@ -231,6 +231,9 @@ public class Player implements cc2.sim.Player {
           return true;
         return false;
       case 3:
+        if (j + 3 == dough.side() - 1 ||
+          (!dough.uncut(i + 1, j + 4) && !dough.uncut(i + 2, j + 4)))
+          return true;
         return false;
     }
     return false;
@@ -273,13 +276,13 @@ public class Player implements cc2.sim.Player {
       Set<Point> ourPoints = getAggressivePoints(shapes[move.shape].rotations()[move.rotation], move.point);
       for (Point p : ourPoints) {
         if (aggressivePoints.contains(p)) {
-          // System.out.println("found aggressive move!");
+          System.out.println("found aggressive move!");
           return move;
         }
       }
     }
 
-    // System.out.println("can't find aggressive move");
+    System.out.println("can't find aggressive move");
     return moves.get(0);
   }
 
