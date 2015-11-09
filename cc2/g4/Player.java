@@ -16,6 +16,8 @@ public class Player implements cc2.sim.Player {
   private boolean firstRun = false;
 
   private int lastLength = 0;
+  private boolean lineAvailable = true;
+  private int mode = 0;
 
   private Queue<Shape> backup8shapes;
 
@@ -125,12 +127,18 @@ public class Player implements cc2.sim.Player {
           }
         }
       } else {
+        mode = 1;
         int count = 0;
         for (int i = 0; i < 4; i++) {
-          cutter[count++] = new Point(i, 0);
+          cutter[i] = new Point(i, 0);
         }
-        int extra = gen.nextInt(4);
-        cutter[count] = new Point(1, extra);
+        if (lineAvailable) {
+          cutter[count] = new Point(4, 0);
+          lineAvailable = false;
+        } else {
+          int extra = gen.nextInt(4);
+          cutter[count] = new Point(1, extra);
+        }
       }
     }
     return new Shape(cutter);
@@ -171,7 +179,7 @@ public class Player implements cc2.sim.Player {
           for (int ri = 0 ; ri != rotations.length ; ++ri) {
             Shape s = rotations[ri];
             if (dough.cuts(s, p)) {
-              if (s.size() == 11 && ri == 2) {
+              if (mode == 0 && s.size() == 11 && ri == 2) {
                 int latitude = i - 1;
                 if (latitude < 0) {
                   return new Move(si, ri, p);
@@ -187,6 +195,8 @@ public class Player implements cc2.sim.Player {
                     return new Move(si, ri, p);
                   }
                 }
+              } else if (mode == 1 && s.size() == 11) {
+                return new Move(si, ri, p);
               }
               moves.add(new Move(si, ri, p));
             }
