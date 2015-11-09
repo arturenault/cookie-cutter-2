@@ -25,7 +25,7 @@ public class Player implements cc2.sim.Player {
 
   public Shape cutter(int length, Shape[] shapes, Shape[] opponent_shapes)
   {
-    if (firstRun = true) {
+    if (firstRun) {
       firstRun = false;
 
       populateBackup8Shapes();
