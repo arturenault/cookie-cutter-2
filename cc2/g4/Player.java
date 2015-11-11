@@ -20,6 +20,7 @@ public class Player implements cc2.sim.Player {
   private int mode = 0;
 
   private Queue<Shape> backup8shapes;
+  private Queue<Shape> backup5shapes;
 
   // aggressive cuts variables
   ArrayList<Move> oppMoves = new ArrayList<>();
@@ -31,6 +32,7 @@ public class Player implements cc2.sim.Player {
       firstRun = false;
 
       populateBackup8Shapes();
+      populateBackup5Shapes();
     }
 
     Point[] cutter = new Point[length];
@@ -137,17 +139,7 @@ public class Player implements cc2.sim.Player {
         }
       } else {
         mode = 1;
-        int count = 0;
-        for (int i = 0; i < 4; i++) {
-          cutter[count++] = new Point(i, 0);
-        }
-        if (lineAvailable) {
-          cutter[count] = new Point(4, 0);
-          lineAvailable = false;
-        } else {
-          int extra = gen.nextInt(4);
-          cutter[count] = new Point(extra, 1);
-        }
+        return backup5shapes.poll();
       }
     }
     System.out.println("g4 (3) " + length + ": " + new Shape(cutter));
@@ -241,34 +233,67 @@ public class Player implements cc2.sim.Player {
     backup8shapes = new java.util.concurrent.ConcurrentLinkedQueue<Shape>();
 
     Point[] points = new Point[8];
-    Shape shape;
 
     for(int i = 0; i < points.length; i++) {
       points[i] = new Point(i, 0);
     }
-    shape = new Shape(points);
-    backup8shapes.add(shape);
+    backup8shapes.add(new Shape(points));
 
     for(int i = 0; i < points.length - 1; i++) {
       points[i] = new Point(0, i);
     } 
     int hockeySide = gen.nextInt(2);
     points[points.length - 1] = new Point(1, hockeySide == 0 ? 0 : points.length - 2);
-    shape = new Shape(points);
-    backup8shapes.add(shape);
+    backup8shapes.add(new Shape(points));
 
     for(int i = 0; i < points.length - 1; i++) {
       points[i] = new Point(0, i);
     }
     points[points.length - 1] = new Point(1, hockeySide == 0 ? points.length - 2 : 0);
-    shape = new Shape(points);
-    backup8shapes.add(shape);
+    backup8shapes.add(new Shape(points));
 
     for (int i = 0; i < points.length; i++) {
       points[i] = new Point(i / 4, i % 4);
     }
-    shape = new Shape(points);
-    backup8shapes.add(shape);
+    backup8shapes.add(new Shape(points));
+  }
+  
+  private void populateBackup5Shapes() {
+    backup5shapes = new java.util.concurrent.ConcurrentLinkedQueue<Shape>();
+
+    Point[] points = new Point[5];
+    Shape shape;
+
+    for(int i = 0; i < points.length; i++) {
+      points[i] = new Point(i, 0);
+    }
+    backup5shapes.add(new Shape(points));
+
+    for(int i = 0; i < points.length - 1; i++) {
+      points[i] = new Point(0, i);
+    } 
+    int hockeySide = gen.nextInt(2);
+    points[points.length - 1] = new Point(1, hockeySide == 0 ? 0 : points.length - 2);
+    backup5shapes.add(new Shape(points));
+
+    for(int i = 0; i < points.length - 1; i++) {
+      points[i] = new Point(0, i);
+    }
+    points[points.length - 1] = new Point(1, hockeySide == 0 ? points.length - 2 : 0);
+    backup5shapes.add(new Shape(points));
+  
+    for(int i = 0; i < points.length - 1; i++) {
+      points[i] = new Point(0,i);
+    }
+    int extra = gen.nextInt(2) + 1;
+    points[points.length - 1] = new Point(1, extra);
+    backup5shapes.add(new Shape(points));
+
+    for(int i = 0; i < points.length - 1; i++) {
+      points[i] = new Point(0,i);
+    }
+    points[points.length - 1] = new Point(1, 3 - extra);
+    backup5shapes.add(new Shape(points));
   }
 
   /**
