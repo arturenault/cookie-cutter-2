@@ -190,12 +190,10 @@ public class Player implements cc2.sim.Player {
           for (int ri = 0 ; ri != rotations.length ; ++ri) {
             Shape s = rotations[ri];
             if (dough.cuts(s, p)) {
-              if (mode == 0 && s.size() == 11) {
+              if (s.size() == 11) {
                 if (isIdeal(dough, ri, i, j)) {
                   idealMoves.add(new Move(si, ri, p));
                 }
-              } else if (mode == 1 && s.size() == 11) {
-                return new Move(si, ri, p);
               }
               moves.add(new Move(si, ri, p));
             }
@@ -400,6 +398,23 @@ public class Player implements cc2.sim.Player {
     }
 
     return -1;
+  }
+
+  private int findNumberOfPossibleMovesWithShape(Shape shape, Dough d) {
+    int moves = 0;
+    for (int i = 0 ; i != d.side() ; ++i) {
+      for (int j = 0 ; j != d.side() ; ++j) {
+        Point p = new Point(i, j);
+        Shape[] rotations = shape.rotations();
+        for (int ri = 0 ; ri != rotations.length ; ++ri) {
+          Shape s = rotations[ri];
+          if (d.cuts(s, p)) {
+            moves++;
+          }
+        }
+      }
+    }
+    return moves;
   }
 
 }
