@@ -251,14 +251,23 @@ public class Player implements cc2.sim.Player {
     shape = new Shape(points);
     backup8shapes.add(shape);
 
-    for(int i = 0; i < points.length; i++) {
-      points[i] = new Point(i / 4, i % 4);
-    }
+    for(int i = 0; i < points.length - 1; i++) {
+      points[i] = new Point(0, i);
+    } 
+    int hockeySide = gen.nextInt(2);
+    points[points.length - 1] = new Point(1, hockeySide == 0 ? 0 : points.length - 2);
     shape = new Shape(points);
     backup8shapes.add(shape);
 
-    for(int i = 0; i < points.length; i++) {
-      points[i] = new Point(i / 3, i % 3);
+    for(int i = 0; i < points.length - 1; i++) {
+      points[i] = new Point(0, i);
+    }
+    points[points.length - 1] = new Point(1, hockeySide == 0 ? points.length - 2 : 0);
+    shape = new Shape(points);
+    backup8shapes.add(shape);
+
+    for (int i = 0; i < points.length; i++) {
+      points[i] = new Point(i / 4, i % 4);
     }
     shape = new Shape(points);
     backup8shapes.add(shape);
