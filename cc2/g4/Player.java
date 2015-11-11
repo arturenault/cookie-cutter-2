@@ -215,22 +215,22 @@ public class Player implements cc2.sim.Player {
     switch (rotation) {
       case 0:
         if (i + 3 == dough.side() - 1 ||
-          (!dough.uncut(i + 4, j + 1) && !dough.uncut(i + 4, j + 2)))
+          (!dough.uncut(i + 4, j + 1) && !dough.uncut(i + 4, j + 2) && dough.uncut(i + 3, j + 1) && dough.uncut(i + 3, j + 2)))
           return true;
         return false;
       case 1:
         if (j == 0 ||
-          (!dough.uncut(i + 1, j - 1) && !dough.uncut(i + 2, j - 1)))
+          (!dough.uncut(i + 1, j - 1) && !dough.uncut(i + 2, j - 1) && dough.uncut(i + 1, j) && dough.uncut(i + 2, j)))
           return true;
         return false;
       case 2:
         if (i == 0 ||
-          (!dough.uncut(i - 1, j + 1) && !dough.uncut(i - 1, j + 2)))
+          (!dough.uncut(i - 1, j + 1) && !dough.uncut(i - 1, j + 2) && dough.uncut(i, j + 1) && dough.uncut(i, j + 2)))
           return true;
         return false;
       case 3:
         if (j + 3 == dough.side() - 1 ||
-          (!dough.uncut(i + 1, j + 4) && !dough.uncut(i + 2, j + 4)))
+          (!dough.uncut(i + 1, j + 4) && !dough.uncut(i + 2, j + 4) && dough.uncut(i + 1, j + 3) && dough.uncut(i + 2, j + 3)))
           return true;
         return false;
     }
