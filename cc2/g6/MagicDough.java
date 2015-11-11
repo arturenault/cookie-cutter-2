@@ -4,20 +4,27 @@ import cc2.sim.Dough;
 import cc2.sim.Move;
 import cc2.sim.Point;
 import cc2.sim.Shape;
-import jdk.nashorn.internal.runtime.regexp.joni.exception.ValueException;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Created by rbtying on 10/31/15.
  */
 public class MagicDough {
 
-    public int width, height;
+    public int width, height, window_size;
 
     public char data[][];
 
     private Move lastMove;
+
+    private Shape your_cutters[], oppo_cutters[];
+
+    private Map<Window, Long> dirty_mine = new HashMap<>();
+    private Map<Window, Long> dirty_oppo = new HashMap<>();
+
+    private Map<Point, List<Window>> reverse_window_lookup = new HashMap<>();
 
     public class Window {
         public int i;
@@ -61,20 +68,38 @@ public class MagicDough {
         }
     }
 
-    public MagicDough(int size) {
-        this(size, size);
+    public MagicDough(int size, int window_size) {
+        this(size, size, window_size);
     }
 
-    public MagicDough(int width, int height) {
+    public MagicDough(int width, int height, int window_size) {
         this.width = width;
         this.height = height;
+        this.window_size = window_size;
         data = new char[width][height];
         for (int i = 0; i < data.length; ++i) {
             for (int j = 0; j < data.length; ++j) {
                 data[i][j] = 0;
+                Window w = effectWindow(i, j);
+                dirty_mine.put(w, null);
+                dirty_oppo.put(w, null);
+            }
+        }
+
+        for (int i = 0; i < data.length; ++i) {
+            for (int j = 0; j < data.length; ++j) {
+                Point p = new Point(i, j);
+
+                List l = dirty_mine.keySet().stream().filter(w -> w.contains(p)).collect(Collectors.toList());
+                reverse_window_lookup.put(p, l);
             }
         }
         lastMove = null;
+    }
+
+    public void setCutters(Shape yours[], Shape oppo[]) {
+        your_cutters = yours.clone();
+        oppo_cutters = oppo.clone();
     }
 
     public boolean diffFromDough(Dough d) {
@@ -85,6 +110,10 @@ public class MagicDough {
                 if (!d.uncut(i, j) && isClear(i, j)) {
                     // set to -1 because it's due to an enemy
                     data[i][j] = (char) -1;
+                    for (Window w : reverse_window_lookup.get(new Point(i, j))) {
+                        dirty_mine.put(w, null);
+                        dirty_oppo.put(w, null);
+                    }
                     changed = true;
                 }
             }
@@ -160,6 +189,11 @@ public class MagicDough {
 
         for (Point p : s[m.shape].rotations()[m.rotation]) {
             data[p.i + m.point.i][p.j + m.point.j] = x;
+            Point pp = new Point(p.i + m.point.i, p.j + m.point.j);
+            for (Window w : reverse_window_lookup.get(pp)) {
+                dirty_mine.put(w, null);
+                dirty_oppo.put(w, null);
+            }
         }
         lastMove = m;
         return true;
@@ -169,14 +203,17 @@ public class MagicDough {
         if (lastMove != null) {
             for (Point p : s[lastMove.shape].rotations()[lastMove.rotation]) {
                 data[p.i + lastMove.point.i][p.j + lastMove.point.j] = 0;
+                Point pp = new Point(p.i + lastMove.point.i, p.j + lastMove.point.j);
+                for (Window w : reverse_window_lookup.get(pp)) {
+                    dirty_mine.put(w, null);
+                    dirty_oppo.put(w, null);
+                }
             }
         }
         lastMove = null;
     }
 
     public Window effectWindow(int i, int j) {
-        int WINDOW_SIZE = 22;
-
         if (i < 0) {
             i = 0;
         }
@@ -185,17 +222,43 @@ public class MagicDough {
             j = 0;
         }
 
-        if (i + WINDOW_SIZE >= width) {
-            i = width - WINDOW_SIZE;
+        if (i + window_size >= width) {
+            i = width - window_size;
         }
-        if (j + WINDOW_SIZE >= height) {
-            j = height - WINDOW_SIZE;
+        if (j + window_size >= height) {
+            j = height - window_size;
         }
 
-        return new Window(i, j, WINDOW_SIZE, WINDOW_SIZE);
+        return new Window(i, j, window_size, window_size);
     }
 
-    public Map<Window, Long> scoreAllWindows(Shape s[]) {
+    public Map<Window, Long> scoreAllWindowsMine() {
+        return scoreAllWindows(your_cutters);
+    }
+
+    public Map<Window, Long> scoreAllWindowsOppo() {
+        return scoreAllWindows(oppo_cutters);
+    }
+
+    public long countSpacesMine(Window w) {
+        Long l = dirty_mine.get(w);
+        if (l == null) {
+            l = countSpaces(w, your_cutters);
+            dirty_mine.put(w, l);
+        }
+        return l;
+    }
+
+    public long countSpacesOppo(Window w) {
+        Long l = dirty_oppo.get(w);
+        if (l == null) {
+            l = countSpaces(w, oppo_cutters);
+            dirty_oppo.put(w, l);
+        }
+        return l;
+    }
+
+    private Map<Window, Long> scoreAllWindows(Shape s[]) {
         Map<Window, Long> out = new HashMap<>();
 
         for (int i = 0; i < width; ++i) {
@@ -216,7 +279,7 @@ public class MagicDough {
      * @param s an array of shapes to test
      * @return number of valid spaces to be consumed in the window
      */
-    public long countSpaces(Window w, Shape s[]) {
+    private long countSpaces(Window w, Shape s[]) {
         long num_spaces = 0;
         for (Shape ss : s) {
             for (int i = w.i; i < w.i + w.w; ++i) {
@@ -224,7 +287,7 @@ public class MagicDough {
                     Point p = new Point(i, j);
                     for (Shape sss : ss.rotations()) {
                         if (isClear(p, sss, w)) {
-                            num_spaces += sss.size();
+                            num_spaces += Math.pow(sss.size(), 2);
                             break;
                         }
                     }

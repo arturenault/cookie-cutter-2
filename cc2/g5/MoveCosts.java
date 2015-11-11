@@ -5,16 +5,16 @@ import cc2.sim.Move;
 public class MoveCosts {
 
     public Move move;
-    public int playerMoves;
-    public int opponentMoves;
+    public float playerMoves;
+    public float opponentMoves;
     public float cost;
 
-    public MoveCosts(Move m, int pm, int om){
+    public MoveCosts(Move m, float pm, float om, double distance){
         this.move = m;
 
         this.playerMoves = pm;
         this.opponentMoves = om;
 
-        cost = (float)opponentMoves/(float)playerMoves;
+        cost = opponentMoves / playerMoves; // + 1 / (float)distance);
     }
 }

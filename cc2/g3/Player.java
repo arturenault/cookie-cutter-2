@@ -4,6 +4,7 @@ import cc2.sim.Point;
 import cc2.sim.Shape;
 import cc2.sim.Dough;
 import cc2.sim.Move;
+import cc2.g3.gameState;
 import cc2.g3.rectDough;
 
 import java.util.*;
@@ -19,16 +20,23 @@ public class Player implements cc2.sim.Player {
     private Dough opponent, self;
 
     private boolean denied;
+   
+    private int minimax_cutter_index;
+    private int minimax_search_depth;
+    private int switch_threshold;
 
     public Player() {
 	opponent = new Dough(SIDE);
 	self = new Dough(SIDE);
 	denied = false;
+	minimax_cutter_index = 0;
+	minimax_search_depth = 1;
+	switch_threshold = 2;
     }    
 
     public Shape cutter(int length, Shape[] shapes, Shape[] opponent_shapes)
     {
-	if (opponent_shapes.length == 0 || denied == true) {return randLinearCutter(length, shapes, opponent_shapes);}
+	if (opponent_shapes.length == 0 || getMinWidth(opponent_shapes[0]) <= 2 || denied == true) {return randLinearCutter(length, shapes, opponent_shapes);}
 	Point dimensions = getBoundingBox(opponent_shapes[0]);
 	rectDough space = new rectDough(dimensions);
 	space.cut(opponent_shapes[0], new Point(0,0));
@@ -99,6 +107,93 @@ public class Player implements cc2.sim.Player {
 	return new Shape(cutter);
     }
 
+    private int getScore(gameState state) {
+	int score = 0;
+	// our possible moves
+	for (int i = 0 ; i != SIDE ; ++i) {
+	    for (int j = 0 ; j != SIDE ; ++j) {
+		Point p = new Point(i, j);
+		for (int si = 0 ; si <= 2 ; ++si) {
+		    if (state.shapes[si] == null) continue;
+		    Shape[] rotations = state.shapes[si].rotations();
+		    for (int ri = 0 ; ri != rotations.length ; ++ri) {
+			Shape s = rotations[ri];
+			if (state.board.cuts(s,p)) {
+			    score += s.size();
+			}
+		    }
+		}
+	    }
+	}
+	// opponent possible moves
+	for (int i = 0 ; i != SIDE ; ++i) {
+	    for (int j = 0 ; j != SIDE ; ++j) {
+		Point p = new Point(i, j);
+		for (int si = 0 ; si <= 2 ; ++si) {
+		    if (state.opponent_shapes[si] == null) continue;
+		    Shape[] rotations = state.opponent_shapes[si].rotations();
+		    for (int ri = 0 ; ri != rotations.length ; ++ri) {
+			Shape s = rotations[ri];
+			if (state.board.cuts(s,p)) {
+			    score -= s.size();
+			}
+		    }
+		}
+	    }
+	}	
+	// move history
+	for (int i=0; i<state.move_history.size(); i++) {
+	    score += state.shapes[state.move_history.get(i).shape].size() * Math.pow(-1,i);
+	}
+	return score;
+    }
+
+    private void increase_minimax_pieces() {
+	if (minimax_cutter_index < 2) {
+	    minimax_cutter_index++;
+	}
+    }
+
+    private void set_minimax_depth(int depth) {
+	minimax_search_depth = depth;
+    }
+    
+    private gameState minimax(gameState initial_state, int searchDepth, int maxCutterIndex) {
+	int bestScore = Integer.MIN_VALUE;       
+	gameState bestStrategy = initial_state.copy();
+	Stack<gameState> gameTree = new Stack<gameState>();
+	gameTree.push(initial_state);
+	while (!gameTree.isEmpty()) {
+	    gameState state = gameTree.pop();
+	    ArrayList<Move> moves = find_possible_moves(state, maxCutterIndex);
+	    if (moves.size() < switch_threshold && maxCutterIndex != 2) {
+		increase_minimax_pieces();
+	    }
+	    else if (moves.size() < 10 && maxCutterIndex == 2) {
+		set_minimax_depth(4);
+	    }
+	    else if (moves.size() < 25 && maxCutterIndex == 2) {
+		set_minimax_depth(2);
+	    }
+	    Iterator<Move> it = moves.iterator();
+	    while (it.hasNext()) {
+		gameState next_state = state.copy();
+		next_state.play(it.next());
+		int next_score = getScore(next_state);
+		if (next_score > bestScore) {
+		    if (next_state.turns_played < searchDepth) {
+			gameTree.push(next_state);
+		    }
+		    else {
+			bestScore = next_score;
+			bestStrategy = next_state;
+		    }
+		}
+	    }
+	}
+	return bestStrategy;
+    }
+    
     private int getMinWidth(Shape cutter) {
 	Point b = getBoundingBox(cutter);
 	return Math.min( b.i,b.j );
@@ -120,6 +215,55 @@ public class Player implements cc2.sim.Player {
 	return new Point(maxI - minI + 1, maxJ - minJ + 1);
     }
 
+    public ArrayList<Move> find_possible_moves(gameState state, boolean our_turn, int maxCutterIndex) {
+	Dough dough = state.board;
+	ArrayList <Move> moves = new ArrayList <Move> ();
+	Shape[] search_space;
+	if (our_turn) {
+	    search_space = state.shapes;
+	}
+	else {
+	    search_space = state.opponent_shapes;
+	}
+	int bound = SIDE;
+	if (dough.uncut()) {
+	    bound = 15;
+	}
+	while (moves.isEmpty() ) {	
+	    for (int i = 0 ; i != bound ; ++i) {
+		for (int j = 0 ; j != bound ; ++j) {
+		    Point p = new Point(i, j);
+		    for (int si = 0 ; si <= maxCutterIndex ; ++si) {
+			if (search_space[si] == null) continue;
+			Shape[] rotations = search_space[si].rotations();
+			for (int ri = 0 ; ri != rotations.length ; ++ri) {
+			    Shape s = rotations[ri];
+			    if (dough.cuts(s,p)) {
+				moves.add(new Move(si, ri, p));
+			    }
+			}
+		    }
+		}
+	    }
+	    if (maxCutterIndex == 2) {break;}
+	    maxCutterIndex++;	    
+	}
+	return moves;
+    }
+
+    public ArrayList<Move> find_possible_moves(gameState state, int maxCutterIndex) { // used to propogate game tree
+	return find_possible_moves(state, state.our_turn, maxCutterIndex);
+    }
+
+    public ArrayList<Move> find_possible_moves(gameState state, boolean our_turn) { // used to compute score function
+	return find_possible_moves(state, our_turn, 2);
+    }
+
+    private Move random_move(gameState state) {
+	ArrayList<Move> moves = find_possible_moves(state, true);
+	return moves.get(0);
+    }
+    
     // function that will be called multiple times in real_cut with different parameters. set searchDough to opponent for behavior from last submission
     public Move find_cut(Dough dough, Dough searchDough, Shape[] shapes, Shape[] opponent_shapes, int maxCutterIndex) { 
 	ArrayList <ComparableMove> moves = new ArrayList <ComparableMove> ();
@@ -166,13 +310,14 @@ public class Player implements cc2.sim.Player {
 	    return A;
 	}
 	else {
-	    Move B = find_cut(dough, createPaddedBoard(dough, minWidth / 2 - 1, minWidth / 2 - 1, minWidth), shapes, opponent_shapes, 0); // pad all directions with minwidth / 2
-	    if (B != null) {
+	    Move B = find_cut(dough, createPaddedBoard(dough, minWidth / 2 - 1, minWidth / 2 - 1, getMinWidth(opponent_shapes[1]) / 2 - 1), shapes, opponent_shapes, 0); // pad all directions with minwidth / 2
+	    if (B != null && minWidth / 2 - 1 > 0) {
 		System.out.println("Move B");
+		switch_threshold = 200;
 		return B;
 	    }
 	    else {
-		Dough Board1 = createPaddedBoard(dough, minWidth / 2 - 1, 1, minWidth); // pad only one direction by minwidth / 2
+		/*Dough Board1 = createPaddedBoard(dough, minWidth / 2 - 1, 1, minWidth); // pad only one direction by minwidth / 2
 		Dough Board2 = createPaddedBoard(dough, 1, minWidth / 2 - 1, minWidth);
 		Move C1 = find_cut(dough, Board1, shapes, opponent_shapes, 0);
 		Move C2 = find_cut(dough, Board2, shapes, opponent_shapes, 0);
@@ -194,15 +339,21 @@ public class Player implements cc2.sim.Player {
 		    else {
 			return C2;
 		    }
-		}
-		else { // default to behavior of last submission
-		    System.out.println("Move F");
-		    return find_cut(dough, opponent, shapes, opponent_shapes, 2);
-		}
+		}*/
+		//else { 
+		    gameState state = new gameState(dough, true, shapes, opponent_shapes);
+		    gameState opt_state = minimax(state,minimax_search_depth,minimax_cutter_index);
+		    System.out.println("Move D");
+		    if (opt_state.move_history.size() == 0) {
+			return random_move(state);
+		    }
+		    Move D = opt_state.move_history.get(0);
+		    return D;
+		    //}		
 	    }
 	}
     }
-
+    
     private Dough createPaddedBoard(Dough dough, int verticalPadding, int horizontalPadding, int borderPadding) {
 	Dough padded = new Dough(SIDE);
 	for (int i=0; i<SIDE; i++) {

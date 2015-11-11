@@ -19,12 +19,13 @@ public class Player implements cc2.sim.Player {
 
     private int cutter_attempts[] = new int[3];
     private long tick = -1;
+    private int max_undec_moves = -1;
     private Set<Integer> attempted_octominoes = new HashSet<>();
     private Set<Integer> attempted_pentominoes = new HashSet<>();
 
     private Random rng = new Random(0);
 
-    private MagicDough md = new MagicDough(50);
+    private MagicDough md = new MagicDough(50, 21);
 
     private Shape undecomino(Shape cutters[], Shape oppo_cutters[]) {
         // try to make an L
@@ -35,7 +36,15 @@ public class Player implements cc2.sim.Player {
         // *
         // *
         // *
+
         Point p[] = new Point[11];
+        if (cutter_attempts[UNDECOMINO] == 0) {
+            // troll hard, return a line
+            for (int i = 0; i < 11; ++i) {
+                p[i] = new Point(0, i);
+            }
+            return new Shape(p);
+        }
         p[0] = new Point(0, 0);
 
         for (int i = 1; i < 5; ++i) {
@@ -44,12 +53,12 @@ public class Player implements cc2.sim.Player {
         }
 
         switch (cutter_attempts[UNDECOMINO]) {
-            case 0:
+            case 1:
                 // symmetric L
                 p[9] = new Point(0, 5);
                 p[10] = new Point(5, 0);
                 break;
-            case 1:
+            case 0:
                 // long i
                 p[9] = new Point(0, 5);
                 p[10] = new Point(0, 6);
@@ -83,7 +92,6 @@ public class Player implements cc2.sim.Player {
         assert (undec != null);
 
         int oct_id = Util.findArgMin(0, Util.ALL_OCTOMINOES.length, (idx) -> {
-            // minimize total manhattan distance between shapes
             if (attempted_octominoes.contains(idx)) {
                 return Integer.MAX_VALUE;
             }
@@ -103,7 +111,6 @@ public class Player implements cc2.sim.Player {
         assert (undec != null);
 
         int pent_id = Util.findArgMin(0, Util.ALL_PENTOMINOES.length, (idx) -> {
-            // minimize total manhattan distance between shapes
             if (attempted_pentominoes.contains(idx)) {
                 return Integer.MAX_VALUE;
             }
@@ -140,6 +147,12 @@ public class Player implements cc2.sim.Player {
     @Override
     public Move cut(Dough dough, Shape[] your_cutters, Shape[] oppo_cutters) {
         ++tick;
+        if (tick == 0) {
+            md.setCutters(your_cutters, oppo_cutters);
+
+            List<Move> undec_moves = Util.getValidMoves(dough, new Shape[]{your_cutters[0]}, new int[]{0});
+            max_undec_moves = undec_moves.size();
+        }
 
         md.diffFromDough(dough);
 
@@ -158,41 +171,45 @@ public class Player implements cc2.sim.Player {
             List<Move> oct_moves = Util.getValidMoves(dough, new Shape[]{your_cutters[1]}, new int[]{1});
             List<Move> pent_moves = Util.getValidMoves(dough, new Shape[]{your_cutters[2]}, new int[]{2});
 
-            //List<Move> all_valid_moves = Util.getValidMoves(dough, your_cutters);
-
             List<Move> all_valid_moves = new ArrayList<>();
             all_valid_moves.addAll(undec_moves);
             all_valid_moves.addAll(oct_moves);
-            if (undec_moves.isEmpty()) {
+            if (undec_moves.size() < max_undec_moves / 4) {
                 all_valid_moves.addAll(pent_moves);
             }
 
-            Map<MagicDough.Window, Long> pre_move_scores = md.scoreAllWindows(oppo_cutters);
-            long scores[] = new long[all_valid_moves.size()];
+            Map<MagicDough.Window, Long> pre_move_scores = md.scoreAllWindowsOppo();
+
+            double scores[] = new double[all_valid_moves.size()];
 
             System.out.println("Evaluating " + all_valid_moves.size() + " valid moves...");
 
             for (int i = 0; i < all_valid_moves.size(); ++i) {
                 Move m = all_valid_moves.get(i);
-                MagicDough.Window w = md.effectWindow(m.point.i, m.point.j);
+                Point dim = Util.dimensions(your_cutters[m.shape].rotations()[m.rotation])[0];
+
+                MagicDough.Window w = md.effectWindow(m.point.i + dim.i / 2 - md.window_size / 2, m.point.j + dim.j / 2 - md.window_size / 2);
+
+                scores[i] = - pre_move_scores.get(w) - your_cutters[m.shape].size();
 
                 if (pre_move_scores.get(w) == 0) {
-                    scores[i] = 0;
                     continue;
                 }
 
                 if (md.makeMove(m, your_cutters, false)) {
-                    long score = md.countSpaces(w, oppo_cutters);
+                    long score = md.countSpacesOppo(w);
                     md.undoLastMove(your_cutters);
-                    scores[i] = score - pre_move_scores.get(w);
+                    // score should be less than pre_move_scores so this is negative
+                    scores[i] += score;
                 } else {
-                    scores[i] = 0;
+                    // can't make this move
+                    scores[i] += Integer.MAX_VALUE;
                 }
             }
             // most negative is best
 
-            long minscore = Long.MAX_VALUE;
-            long maxscore = Long.MIN_VALUE;
+            double minscore = Long.MAX_VALUE;
+            double maxscore = Long.MIN_VALUE;
             Move m = null;
             for (int i = 0; i < all_valid_moves.size(); ++i) {
                 if (scores[i] < minscore) {

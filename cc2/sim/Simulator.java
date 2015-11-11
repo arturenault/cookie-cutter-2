@@ -164,8 +164,11 @@ class Simulator {
 					if (shape[p].size() != size)
 						throw new RuntimeException("Invalid cutter size");
 					for (int rr = 0 ; rr != r ; ++rr)
-						if (shape[p].equals(cutters_retry[rr]))
+						if (shape[p].equals(cutters_retry[rr])) {
+							System.err.println(shape[p]);
+							System.err.println(cutters_retry[rr]);
 							throw new RuntimeException("Repeated cutter");
+						}
 					if (!gui) continue;
 					cutters_1.add(shape[0]);
 					if (p == 1) cutters_2.add(shape[1]);

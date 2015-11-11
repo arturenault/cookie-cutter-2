@@ -10,35 +10,61 @@ import java.util.*;
 public class Player implements cc2.sim.Player {
 
 	private Random gen = new Random();
-
+	
 	public Shape cutter(int length, Shape[] shapes, Shape[] opponent_shapes)
 	{
-		Shape s = ShapeFactory.getNext(length);
-		System.out.println("MUHSHAPE "+length+":"+s);
-		return s;
+		return ShapeFactory.getNext(length);
+	}
+	
+	private int getConvexHullMinSide(Shape eleven) {
+		int minX, minY, maxX, maxY;
+		minX = minY = Integer.MAX_VALUE;
+		maxX = maxY = 0;
+		Iterator<Point> iter = eleven.iterator();
+		while(iter.hasNext()) {
+			Point p = iter.next();
+			if(p.i < minX) minX = p.i;
+			if(p.i > maxX) maxX = p.i;
+			if(p.j < minY) minY = p.j;
+			if(p.j > maxY) maxY = p.j;
+		}
+		return Math.min(maxX - minX, maxY - minY) + 1;
 	}
 
 	public Move cut(Dough dough, Shape[] shapes, Shape[] opponent_shapes)
 	{
+		int opp_hull_min = getConvexHullMinSide(opponent_shapes[0]);
+		
+		int si = 0;
+		
 		// prune larger shapes if initial move
-
+		
 		if (dough.uncut()) {
-			// play random possible move of the 5-piece
-			Shape[] forceFiveShape = {null, null, shapes[2]};
-			return randomLargestCut(dough, forceFiveShape);
+			si = 2;
 		}
 		
 		//Stack 11s
-		int si = 0;
 		Shape shape = shapes[si];
 		Shape[] rotations = shape.rotations();
-		for (int ri = 0; ri < rotations.length; ri++) {
-			for (int j = 1 ; j < dough.side(); j+=2) {
-				for (int i = 0 ; i < dough.side() ; i++) {
-					Point p = new Point(i, j);
-					Shape s = rotations[ri];
-					if (dough.cuts(s, p)) {
-						return new Move(si, ri, p);
+		
+		int increment = 6;
+		if(opp_hull_min == 2) {
+			increment = 2;
+		} else if(opp_hull_min <= 4) {
+			increment = 4;
+		}
+		
+		System.out.println(increment);
+				
+		for(int ri = 0; ri < rotations.length; ++ri) {
+			for(int inc = 0; inc < increment/3+1; ++inc) {
+				for(int j = increment-(inc*2+1); j < dough.side(); j += increment) {
+					for(int i = 0; i < dough.side(); ++i) {
+						Point p = new Point(i, j);
+						Shape s = rotations[ri];
+						if (dough.cuts(s, p)) {
+							return new Move(si, ri, p);
+						}
 					}
 				}
 			}

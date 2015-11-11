@@ -2,6 +2,7 @@ package cc2.g3;
 
 import cc2.sim.Point;
 import cc2.sim.Shape;
+import cc2.sim.Dough;
 
 public class rectDough {
 
@@ -15,6 +16,21 @@ public class rectDough {
     protected int n_cuts;
 
     // create new Dough
+    public rectDough(Dough dough) {
+	width = dough.side();
+	height = dough.side();
+	size = height*width;
+	this.dough = new boolean[height][width];
+	n_cuts = 0;
+	for (int i=0; i<height; i++) {
+	    for (int j=0; j<width; j++) {
+		if (!dough.uncut(i,j)) {
+		    this.cut(i,j);
+		}
+	    }
+	}
+    }
+    
     public rectDough(Point dimensions)
     {
 	height = dimensions.i;
@@ -77,6 +93,11 @@ public class rectDough {
 	}
 	dough[q.i][q.j] = true;
 	n_cuts++;
+	return true;
+    }
+
+    public boolean cut(int i, int j) {
+	cut(new Point(i,j));
 	return true;
     }
     
