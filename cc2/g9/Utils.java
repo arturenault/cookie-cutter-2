@@ -11,7 +11,7 @@ import java.lang.*;
 public class Utils {
     public Utils() {
     }
-    public static Move eachQueueMove(Dough dough, Shape s, int gapOffset, int colOffset, int row, boolean flag4 ) {
+    public static Move eachQueueMove(Dough dough, Shape s, int gapOffset, int colOffset, int row, boolean flag4 , ArrayList<Move> prevDefMoves) {
         // ---------- diagonal queue ( Reverse Order )----------
         int i = dough.side() - 1;
     	if(flag4)
@@ -25,16 +25,51 @@ public class Utils {
     	}
         for (; i >= 0 ; i=i-gapOffset ){
             int j = (-1)*i + colOffset;
-            if (j >= 0){
+            if (j >= 0 && j < dough.side()){
                 Point thisPt = new Point(i, j);
                 Move thisMv = new Move(0, 2, thisPt);
                 if (dough.cuts(s, thisPt)){
                     return thisMv;
+                } 
+                else if (i-2 > 0 && j-2 > 0 && i+2 <dough.side() && j+2 < dough.side() ) {
+                    // if can not put in queue, and it's because of opponent's blocking, then look for neighboring +- 2 positions. 
+                    Boolean isPrevMove = false;
+                    for(Move prevMv: prevDefMoves){
+                        if (prevMv.point.i == i && prevMv.point.j ==j ) {
+                            isPrevMove = true;
+                        }
+                    }
+                    // check if we have placed at this queue position already
+                    if ( isPrevMove == false){
+                        Point topPt = new Point(i-1, j+1);
+                        Point bottomPt = new Point(i+1, j-1);
+                        Point top2Pt = new Point(i-2, j+2);
+                        Point bottom2Pt = new Point(i+2, j-2);
+                        Boolean isPrevMove2 = false;
+                        for(Move prevMv: prevDefMoves){
+                            if ((prevMv.point.i == topPt.i && prevMv.point.j ==topPt.j ) ||(prevMv.point.i == bottomPt.i && prevMv.point.j ==bottomPt.j )||(prevMv.point.i == top2Pt.i && prevMv.point.j ==top2Pt.j )||(prevMv.point.i == bottom2Pt.i && prevMv.point.j ==bottom2Pt.j )) {
+                                isPrevMove2 = true;
+                            }
+                        }
+                        // check if we have chosen a backup neighboring position already
+                        if ( isPrevMove2 == false) {
+                            if (dough.cuts(s, topPt)) {
+                                return new Move(0, 2, topPt);
+                            }else if (dough.cuts(s, bottomPt)) {
+                                return new Move(0, 2, bottomPt);
+                            }else if (dough.cuts(s, top2Pt)) {
+                                return new Move(0, 2, top2Pt);
+                            }else if (dough.cuts(s, bottom2Pt)) {
+                                return new Move(0, 2, bottom2Pt);
+                            }
+                        }
+                    }
                 }
             }
-        }
+        }   
         return null;
     }
+
     public static Move fillInQueueMove(Dough dough, Shape[] shapes) {
         System.out.println("size of shapes" + shapes.length);
         System.out.println("size of shapes rotation" + shapes[0].rotations().length);
@@ -62,19 +97,21 @@ public class Utils {
     public static ArrayList<Point> savePointsForLater(Move defenseMv, ArrayList<Move> prevDefMoves, ArrayList<Point> savedPoints, int gapOffset, Dough dough, Shape shape) {
         Point curPt = defenseMv.point;
         if (curPt.i + gapOffset < dough.side() && curPt.j - gapOffset >0 ) {
-            Point targetPt = new Point(curPt.i + gapOffset, curPt.j - gapOffset);
-            for (Move thisMv: prevDefMoves) {
-                if ( thisMv.point.i == targetPt.i && thisMv.point.j == targetPt.j) {
-                    // System.out.println(" =============== we found a match! ===============");
-                    for (int i = 1; i < gapOffset; i++) {
-                        for (Point p: shape) {
-                            Point toBeAdded = new Point( p.i + curPt.i + i, p.j + curPt.j -i);
-                            savedPoints.add(toBeAdded);
+            for(int gap = 1; gap <= gapOffset; gap++){
+                Point targetPt = new Point(curPt.i + gap, curPt.j - gap);
+                for (Move thisMv: prevDefMoves) {
+                    if ( thisMv.point.i == targetPt.i && thisMv.point.j == targetPt.j) {
+                        // System.out.println(" =============== we found a match! ===============");
+                        for (int i = 1; i < gap; i++) {
+                            for (Point p: shape) {
+                                Point toBeAdded = new Point( p.i + curPt.i + i, p.j + curPt.j -i);
+                                savedPoints.add(toBeAdded);
+                            }
                         }
+                        break; 
                     }
-                    break; 
-                }
-            } 
+                } 
+            }
         }
         return savedPoints;
     }
@@ -161,7 +198,7 @@ public class Utils {
     }
     
     
-    public static Move getDefenseIndex(Dough dough, Shape[] shapes, Shape[] opponent_shapes, Point lastOppMove) {
+    public static Move getDefenseIndex(Dough dough, Shape[] shapes, Shape[] opponent_shapes, Point lastOppMove, ArrayList<Move> prevDefMoves) {
 
         Shape[] rotations = shapes[0].rotations();
         Shape s = rotations[2];
@@ -174,25 +211,25 @@ public class Utils {
         
         
         // ---------- diagonal queue ----------
-        Move firstQueue =  eachQueueMove(dough, s, gapOffset, 44, 1, false);
+        Move firstQueue =  eachQueueMove(dough, s, gapOffset, 44, 1, false, prevDefMoves);
         if (firstQueue != null) queueMoves.add(firstQueue);
 
         // ---------- 2nd to diagonal queue ----------
-        Move secondLeftQueue = eachQueueMove(dough, s, gapOffset, 33, 2, flag4);
+        Move secondLeftQueue = eachQueueMove(dough, s, gapOffset, 33, 2, flag4, prevDefMoves);
         if (secondLeftQueue != null) queueMoves.add(secondLeftQueue);
-        Move secondRightQueue = eachQueueMove(dough, s,  gapOffset, 55, 2, flag4);
+        Move secondRightQueue = eachQueueMove(dough, s,  gapOffset, 55, 2, flag4, prevDefMoves);
         if (secondRightQueue != null) queueMoves.add(secondRightQueue);
 
         // ---------- 3rd to diagonal queue ----------
-        Move thirdLeftQueue = eachQueueMove(dough, s,  gapOffset, 22, 3, flag4);
+        Move thirdLeftQueue = eachQueueMove(dough, s,  gapOffset, 22, 3, flag4, prevDefMoves);
         if (thirdLeftQueue != null) queueMoves.add(thirdLeftQueue);
-        Move thirdRightQueue = eachQueueMove(dough, s,  gapOffset, 66, 3, flag4);
+        Move thirdRightQueue = eachQueueMove(dough, s,  gapOffset, 66, 3, flag4, prevDefMoves);
         if (thirdRightQueue != null) queueMoves.add(thirdRightQueue);
 
         // ---------- 4th to diagonal queue ----------
-        Move fourthLeftQueue = eachQueueMove(dough, s,  gapOffset, 11, 4, flag4);
+        Move fourthLeftQueue = eachQueueMove(dough, s,  gapOffset, 11, 4, flag4, prevDefMoves);
         if (fourthLeftQueue != null) queueMoves.add(fourthLeftQueue);
-        Move fourthRightQueue = eachQueueMove(dough, s,  gapOffset, 77, 4, flag4);
+        Move fourthRightQueue = eachQueueMove(dough, s,  gapOffset, 77, 4, flag4, prevDefMoves);
         if (fourthRightQueue != null) queueMoves.add(fourthRightQueue);
 
         if(queueMoves.size() > 0){
@@ -224,8 +261,41 @@ public class Utils {
         // System.out.println("No defensive move found.");
         return null;
     }
+    
+    
+    public static Move getDestructor(Shape[] shapes, Dough dough, ArrayList<ArrayList<Point>> oppMoves, ArrayList<Point> savedPoints)
+    {
+    	for(int i=0; i<oppMoves.size(); i++)
+    	{
+    		ArrayList<Point> oppMv = oppMoves.get(i);
+    		if(oppMv.size() != 11) continue;
+    		for(int pt=0; pt<oppMv.size(); pt++)
+    		{
+    			Point putPt = new Point(oppMv.get(pt).i, oppMv.get(pt).j+1);
+    			//oppPt.j++;
+    			Shape[] rotations = shapes[1].rotations();
+    			int rt=0;
+    			for(Shape s : rotations)
+    			{
+    				
+    				if(dough.cuts(s, putPt) && !inSavedPoints(s, putPt, savedPoints))
+    				{
+    					oppMoves.remove(pt);
+    					return new Move(1,rt,putPt);
+    					
+    				}
+    				rt++;
+    			}
+    		}
+    	}
+    	return null;
+    }
+    
+    
 
     public static float getDistBetweenPoints(Point a, Point b){
     	return (float)Math.sqrt(Math.pow(a.j-b.j,2) + Math.pow(a.i-b.i,2));
     }
+
+
 }

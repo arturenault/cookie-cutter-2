@@ -325,22 +325,46 @@ public class Player implements cc2.sim.Player {
    * Get the most aggressive move. Designed for 11 shapes
    * @param  moves: possible move to choose from
    */
-  private Move aggressiveCut(Shape[] shapes, Shape[] opponent_shapes, ArrayList<Move> moves) {
+  private Move aggressiveCut(Shape[] shapes, Shape[] opponent_shapes, ArrayList<Move> moves) { 
+   ArrayList<Move> rank1 = new ArrayList<>();
+   ArrayList<Move> rank2 = new ArrayList<>();
     Move m1 = oppMoves.get(oppMoves.size() - 1);  // opponent last move
 
-    Set<Point> aggressivePoints = getAggressivePoints(opponent_shapes[m1.shape].rotations()[m1.rotation], m1.point);
+    Set<Point> aggressivePoints = getAggressivePoints(opponent_shapes[m1.shape].rotations()[m1.rotation], m1.point, true);
     for (Move move : moves) {
-      Set<Point> ourPoints = getAggressivePoints(shapes[move.shape].rotations()[move.rotation], move.point);
-      for (Point p : ourPoints) {
-        if (aggressivePoints.contains(p)) {
-          System.out.println("found aggressive move!");
-          locations11.add(move.point);
-          return move;
+      Set<Point> ourPoints = getAggressivePoints(shapes[move.shape].rotations()[move.rotation], move.point, false);
+
+      int count = 0;
+      for (Point p1 : ourPoints) {
+        for (Point p2 : aggressivePoints) {
+          if (p1.equals(p2)) {
+            count++;
+          }
         }
+      }
+
+      if (count > 1) {
+        rank1.add(move);
+      } else if (count > 0) {
+        rank2.add(move);
       }
     }
 
-    System.out.println("can't find aggressive move");
+    System.out.println("rank1 " + rank1.size());
+    System.out.println("rank2 " + rank2.size());
+    if (rank1.size() > 3) {
+      int index = 1 + (int)(Math.random() * (3 - 1));
+      System.out.println("aggressive " + index);
+      return rank1.get(index);
+    }
+
+    if (!rank1.isEmpty()) {
+      return rank1.get(0);
+    }
+    if (!rank2.isEmpty()) {
+      return rank2.get(0);
+    }
+    // System.out.println("can't find aggressive move");
     return moves.get(0);
   }
 
@@ -351,11 +375,15 @@ public class Player implements cc2.sim.Player {
   /**
    * Get the neighbors of a shape at point q
    */
-  private Set<Point> getAggressivePoints(Shape shape, Point q) {
+  private Set<Point> getAggressivePoints(Shape shape, Point q, boolean getNeighbors) {
     Set<Point> res = new HashSet<Point>();
     for (Point p : shape) {
       Point target = new Point(p.i + q.i, p.j + q.j);
-      Collections.addAll(res, target.neighbors());
+      if (getNeighbors) {
+        Collections.addAll(res, target.neighbors());
+      } else {
+        res.add(target);
+      }
     }
 
     return res;

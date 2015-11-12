@@ -5,6 +5,8 @@ import cc2.sim.Dough;
 import cc2.sim.Move;
 import cc2.sim.Shape;
 
+import java.lang.management.ManagementFactory;
+import java.lang.management.ThreadMXBean;
 import java.util.*;
 
 /**
@@ -16,6 +18,11 @@ public class Player implements cc2.sim.Player {
     private static final int OCTOMINO = 1;
     private static final int PENTOMINO = 2;
 
+    private static ThreadMXBean bean = ManagementFactory.getThreadMXBean();
+    // Empirically observed that final move selection requires 1104000 ns. Added margin on top of that.
+    private long TIME_FOR_MOVE_SELECTION = 5000000;
+    // 1 s time limit. Max observed is 3557220000 ns.
+    private long TIME_LIMIT = 1000000000 - TIME_FOR_MOVE_SELECTION;
 
     private int cutter_attempts[] = new int[3];
     private long tick = -1;
@@ -146,6 +153,10 @@ public class Player implements cc2.sim.Player {
 
     @Override
     public Move cut(Dough dough, Shape[] your_cutters, Shape[] oppo_cutters) {
+        // Maintain time of computation so we don't timeout
+        long start = bean.getCurrentThreadCpuTime();
+        long stop;
+
         ++tick;
         if (tick == 0) {
             md.setCutters(your_cutters, oppo_cutters);
@@ -205,9 +216,15 @@ public class Player implements cc2.sim.Player {
                     // can't make this move
                     scores[i] += Integer.MAX_VALUE;
                 }
-            }
-            // most negative is best
 
+                // Check how we're doing in terms of CPU time remaining. Panic and break if time is tight.
+                stop = bean.getCurrentThreadCpuTime();
+                if (stop-start > TIME_LIMIT) {
+                    break;
+                }
+            }
+
+            // most negative is best
             double minscore = Long.MAX_VALUE;
             double maxscore = Long.MIN_VALUE;
             Move m = null;

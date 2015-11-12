@@ -5,10 +5,15 @@ import cc2.sim.Shape;
 import cc2.sim.Dough;
 import cc2.sim.Move;
 
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.io.Writer;
 import java.util.*;
+
 
 public class Player implements cc2.sim.Player {
 
+	private static final String MoveWrapper = null;
 	private boolean[] row_2 = new boolean [0];
 	private int[] row_2_pos;
 
@@ -18,6 +23,11 @@ public class Player implements cc2.sim.Player {
 //	private Point last_pos = null;
 //	private Move last_move = null;
 //	private int[] transform = {2,0,0};
+	
+	BufferedWriter bWriter = null;
+	
+	boolean sameShape = false;
+	
 
 	private int[][][] count0;
 	private int[][][] opponent_count0;
@@ -25,6 +35,10 @@ public class Player implements cc2.sim.Player {
 	private ArrayList<HashSet<Integer>> opponent_set0;
 	public Shape cutter(int length, Shape[] shapes, Shape[] opponent_shapes)
 	{
+		//riter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream("filename.txt"), "utf-8"))) {
+	   //writer.write("something");    
+	
+		
 		/*if (length == 11)
 		{
 			// Generate cutter of length 11
@@ -139,6 +153,11 @@ public class Player implements cc2.sim.Player {
 			cutter[cutter.length - 1] = new Point(i, 1);
 			for (i = 0 ; i != cutter.length - 1 ; ++i)
 				cutter[i] = new Point(i, 0);
+			
+			if (cutter.length == 11)
+			{
+				sameShape = true;
+			}
 		}
 		return new Shape(cutter);
 	}
@@ -212,19 +231,24 @@ public class Player implements cc2.sim.Player {
 //				}
 //			}
 //		}
-//		for(int i=0;i<side;i++) {
-//			for(int j=0;j<side;j++) {
-//				System.out.print(count[i][j][0]+" ");
-//			}
-//			System.out.println();
-//		}
-//		System.out.println();
-//		for(int i=0;i<side;i++) {
-//			for(int j=0;j<side;j++) {
-//				System.out.print(opponent_count0[i][j][0]+" ");
-//			}
-//			System.out.println();
-//		}
+		
+		System.out.println("Printing my count for 11 shape ");
+		for(int i=0;i<side;i++) {
+			for(int j=0;j<side;j++) {
+				System.out.print(count0[i][j][0]+" ");
+			}
+			System.out.println();
+		}
+		
+		System.out.println("Printing opponents count for 11 shape ");
+		
+		System.out.println();
+		for(int i=0;i<side;i++) {
+			for(int j=0;j<side;j++) {
+				System.out.print(opponent_count0[i][j][0]+" ");
+			}
+			System.out.println();
+		}
 //		System.out.println();
 //		for(int i=0;i<side;i++) {
 //		for(int j=0;j<side;j++) {
@@ -245,7 +269,34 @@ public class Player implements cc2.sim.Player {
 					minidx = s;
 		}
 		// find all valid cuts
-		ArrayList <Move> moves = new ArrayList <Move> ();
+		//ArrayList <Move> moves = new ArrayList <Move> ();
+		
+		
+		PriorityQueue<MoveWrapper> moves = new PriorityQueue<MoveWrapper>(
+				new Comparator<MoveWrapper>()
+				{
+					public int compare( MoveWrapper x, MoveWrapper y )
+			        {
+			            if ( (y.sum11 - x.sum11 ) != 0)
+			            {
+			            	return (y.sum11 - x.sum11);
+			            }
+			            else if ( (y.sum8 - x.sum8 ) != 0)
+			            {
+			            	return (y.sum8 - x.sum8);
+			            }
+			            else if ( (y.sum5 - x.sum5 ) != 0)
+			            {
+			            	return (y.sum5 - x.sum5);
+			            }
+			            else
+			            {
+			            	return 0;
+			            }
+			        }
+				});
+		
+		
 		int difference = Integer.MIN_VALUE;
 		for (int si = 0 ; si != shapes.length ; ++si) {
 			if (si != minidx && dough.uncut()) continue;
@@ -259,7 +310,12 @@ public class Player implements cc2.sim.Player {
 							//Dough doughtmp = new Dough(side);
 							//doughtmp.cut(s, p);
 							//int value = searchValue(dough,doughtmp,shapes,opponent_shapes);
-							int sum = s.size();
+							//int sum = s.size();
+							int sum = 0;
+							int sum11 = 0;
+							int sum8 = 0;
+							int sum5 = 0;
+							
 //							HashSet<Integer> s0 = new HashSet<Integer>();
 //							HashSet<Integer> s1 = new HashSet<Integer>();
 //							HashSet<Integer> s2 = new HashSet<Integer>();
@@ -267,12 +323,25 @@ public class Player implements cc2.sim.Player {
 //							HashSet<Integer> o1 = new HashSet<Integer>();
 //							HashSet<Integer> o2 = new HashSet<Integer>();
 							for (Point q : s){
-								sum -= count0[p.i+q.i][p.j+q.j][0]*11/s.size();
-								sum -= count0[p.i+q.i][p.j+q.j][1]*8/s.size();
-								sum -= count0[p.i+q.i][p.j+q.j][2]*5/s.size();
-								sum += opponent_count0[p.i+q.i][p.j+q.j][0];
-								sum += opponent_count0[p.i+q.i][p.j+q.j][1];
-								sum += opponent_count0[p.i+q.i][p.j+q.j][2];
+								//sum -= count0[p.i+q.i][p.j+q.j][0]*11/s.size();
+								//sum -= count0[p.i+q.i][p.j+q.j][1]*8/s.size();
+								//sum -= count0[p.i+q.i][p.j+q.j][2]*5/s.size();
+								
+								if (sameShape)
+								{
+									sum11 -= count0[p.i+q.i][p.j+q.j][0];
+									sum8 -= count0[p.i+q.i][p.j+q.j][1];
+									sum5 -= count0[p.i+q.i][p.j+q.j][2];
+								}
+								
+								sum11 += opponent_count0[p.i+q.i][p.j+q.j][0];
+								sum8 += opponent_count0[p.i+q.i][p.j+q.j][1];
+								sum5 += opponent_count0[p.i+q.i][p.j+q.j][2]; 
+								
+								
+								//sum -= count0[p.i+q.i][p.j+q.j][si];
+								//sum += opponent_count0[p.i+q.i][p.j+q.j][si];
+								
 								
 //								int idx;
 //								idx = 0 * side * side + (p.i+q.i) * side + p.j+q.j;
@@ -287,13 +356,18 @@ public class Player implements cc2.sim.Player {
 							}
 //							sum = s.size() + o0.size()*11+o1.size()*8+o2.size()*5
 //									- (s0.size()*11*11/s.size()+s1.size()*8*8/s.size()+s2.size()*5*5/s.size());
+							
+							sum = sum11 + sum8 + sum5;
 							if (sum > difference){
 								difference = sum;
 								moves.clear();
-								moves.add(new Move(si, ri, p));
+								//moves.add(new Move(si, ri, p));
+								moves.offer(new MoveWrapper(new Move(si, ri, p), sum11, sum8, sum5));
+								
 							}
 							else if (sum == difference){
-								moves.add(new Move(si, ri, p));
+								moves.offer(new MoveWrapper(new Move(si, ri, p), sum11, sum8, sum5));
+								//moves.add(new Move(si, ri, p));
 							}
 //							if (value > difference){
 //								moves.clear();
@@ -306,11 +380,18 @@ public class Player implements cc2.sim.Player {
 					}
 				}
 			}
-//			if (moves.size() > 0)
-//				break;
+			if (moves.size() > 0)
+				break;
 		}
 		// return a cut randomly
-		Move rand_move = moves.get(gen.nextInt(moves.size()));
+		
+		//Move rand_move = moves.get(gen.nextInt(moves.size()));
+		
+		Move rand_move = moves.peek().move;
+		
+		System.out.println("Size of the moves : " + moves.size());
+		
+		
 //		if (!dough.uncut()) {
 //			last_move = rand_move;
 //		}

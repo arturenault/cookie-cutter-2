@@ -18,14 +18,18 @@ public class Player implements cc2.sim.Player {
 	private int firstTry11 = 0;
 	private int firstTry8 = 0;
 	private int firstTry5 = 0;
+	public int countDestruct = 18;
 
 	private boolean defensive = false;
 	
 	public boolean board[][] = null;
 	public Point lastOppPlay;
+	public ArrayList <Point> lastOppPoints;
 
 	public ArrayList <Move> prevDefMoves = new ArrayList <Move> ();
 	public ArrayList <Point> savedPoints = new ArrayList <Point> ();
+	public ArrayList <Point> lastMovePoints;
+	public ArrayList<ArrayList<Point>> oppMoves = new ArrayList<ArrayList<Point>>();
 	
 	
 	public boolean decideStrategy(Shape[] opponent_shapes)
@@ -146,6 +150,20 @@ public class Player implements cc2.sim.Player {
 			} else if (firstTry5 == 1 ) {
 				
 				cutter[cutter.length - 1] = new Point(0, 1);
+				row_2[0] = true;
+				// System.out.println("Is same cutter?");
+				// System.out.println(cutter[cutter.length - 1].i + ", " + cutter[cutter.length - 1].j );
+				
+				for (int i = 0 ; i != cutter.length - 1 ; ++i){
+					cutter[i] = new Point(i, 0);
+					
+					// System.out.println(cutter[i].i + ", " + cutter[i].j );
+				}
+				firstTry5++;
+			} else if (firstTry5 ==2 ) {
+				
+				cutter[cutter.length - 1] = new Point(3, 1);
+				row_2[3] = true;
 				// System.out.println("Is same cutter?");
 				// System.out.println(cutter[cutter.length - 1].i + ", " + cutter[cutter.length - 1].j );
 				
@@ -156,16 +174,15 @@ public class Player implements cc2.sim.Player {
 				}
 				firstTry5++;
 			} else {
-				
-				cutter[cutter.length - 1] = new Point(3, 1);
-				// System.out.println("Is same cutter?");
-				// System.out.println(cutter[cutter.length - 1].i + ", " + cutter[cutter.length - 1].j );
-				
-				for (int i = 0 ; i != cutter.length - 1 ; ++i){
+				// pick a random cell from 2nd row but not same
+				int i;
+				do {
+					i = 1 + gen.nextInt(1);
+				} while (row_2[i]);
+				row_2[i] = true;
+				cutter[cutter.length - 1] = new Point(i, 1);
+				for (i = 0 ; i != cutter.length - 1 ; ++i)
 					cutter[i] = new Point(i, 0);
-					
-					// System.out.println(cutter[i].i + ", " + cutter[i].j );
-				}
 				firstTry5++;
 			}
 		}
@@ -180,18 +197,24 @@ public class Player implements cc2.sim.Player {
 
 	public Move cut(Dough dough, Shape[] shapes, Shape[] opponent_shapes)
 	{	
-		if (dough.countCut() ==0) {
-			Point startPt = new Point(45, 0);
-			Move startMv = new Move(2, 0, startPt);
-			if (dough.cuts(shapes[2].rotations()[0], startPt)){
-				return startMv;
-			} 
-		}
+
 		Move returnMove = null;
 		if(board == null){
 			board = new boolean[dough.side()][dough.side()];
 		}
-		lastOppPlay = getLastOppPlay(dough);
+		// if we are playing first, place 5 piece in bottom left corner.
+		if (dough.countCut() ==0) {
+			Point startPt = new Point(45, 0);
+			Move startMv = new Move(2, 0, startPt);
+			if (dough.cuts(shapes[2].rotations()[0], startPt)){
+				lastMovePoints = updateBoardMyMove(shapes, startMv);
+				lastOppPoints = getLastOppPoints(dough);
+				oppMoves.add(lastOppPoints);
+				return startMv;
+			} 
+		}
+		// lastOppPlay = getLastOppPlay(dough);
+		
 		defensive = decideStrategy(opponent_shapes);
 		// prune larger shapes if initial move
 		if (dough.uncut()) {
@@ -236,7 +259,7 @@ public class Player implements cc2.sim.Player {
 		// return a cut randomly
 		if(moves11.size()>0){
 			int gapOffset = Utils.getGapOffset(shapes, opponent_shapes);
-			Move defenseMv = Utils.getDefenseIndex(dough, shapes, opponent_shapes, lastOppPlay);
+			Move defenseMv = Utils.getDefenseIndex(dough, shapes, opponent_shapes, lastOppPlay, prevDefMoves);
 
 			if (defenseMv != null)
 			{
@@ -245,10 +268,18 @@ public class Player implements cc2.sim.Player {
 				prevDefMoves.add(defenseMv);
 				returnMove = defenseMv;
 			} else {
-				Move thisMv = moves11.get(gen.nextInt(moves11.size()));
-				returnMove = thisMv;
+				// System.exit(0);
+				Move destructor = getDestructorNew(shapes, dough, savedPoints);
+				Move fillInMv = Utils.fillInQueueMove(dough, shapes);
+				if(destructor != null) returnMove = destructor;
+				else if(fillInMv != null) returnMove = fillInMv;
+				else{
+					Move thisMv = moves11.get(gen.nextInt(moves11.size()));
+					returnMove = thisMv;
+				}
 			}
 		} else if (moves8.size()>0) {
+			// System.exit(0);
 			Move fillInMv = Utils.fillInQueueMove(dough, shapes);
 			if ( fillInMv != null ) {
 				returnMove = fillInMv;
@@ -263,7 +294,11 @@ public class Player implements cc2.sim.Player {
 		}
 		
 		if(returnMove != null){
-			updateBoardMyMove(shapes, returnMove);
+			// must call getLastOppPoints before updateBoardMyMove
+			lastOppPoints = getLastOppPoints(dough);
+			oppMoves.add(lastOppPoints);
+			lastMovePoints = updateBoardMyMove(shapes, returnMove);
+			
 		}
 		
 		return returnMove;
@@ -512,10 +547,84 @@ public class Player implements cc2.sim.Player {
 		return oppMove;
 	}
 	
-	public void updateBoardMyMove(Shape[] shapes, Move myMove){
-		for (Point p : shapes[myMove.shape]){
-			board[p.i][p.j] = true;
+	public ArrayList<Point> updateBoardMyMove(Shape[] shapes, Move myMove){
+		ArrayList<Point> lastMovePts = new ArrayList<Point>();
+		for (Point p : shapes[myMove.shape].rotations()[myMove.rotation]){
+			Point newPoint = new Point(p.i + myMove.point.i, p.j + myMove.point.j);
+			board[newPoint.i][newPoint.j] = true;
+			lastMovePts.add(newPoint);
+		}
+		return lastMovePts;
+	}
+
+	public void printAL(ArrayList<Point> ar) {
+    	for(Point p: ar) {
+			System.out.println(" i, j: " + p.i + "," + p.j);
 		}
 	}
+    // Updates board and returns all points from opponent's last move
+    public ArrayList<Point> getLastOppPoints(Dough dough){
+    	// System.out.println("+++++++++++++lastMovePoints length" + lastMovePoints.size());
+    	// printAL(lastMovePoints);
+
+    	ArrayList<Point> lastOppPts = new ArrayList<Point>();
+    	// System.out.println("==============lastOppPts length" + lastOppPts.size());
+        for(int i = 0; i < dough.side(); i++){
+            for(int j = 0; j < dough.side(); j++){
+                if(board[i][j] == false && dough.uncut(i,j) == false){
+                	// at this point could be opp or self.
+                		board[i][j] = true;
+                		boolean isOpp = true;
+                		for(Point p: lastMovePoints) {
+                			if(p.i == j && p.j ==i) {
+                				isOpp = false;
+                				break;
+                			}
+                		}
+                		if (isOpp ==true ) {
+                			lastOppPts.add(new Point(i, j));
+                		}
+                }
+            }
+        }
+        // System.out.println("---------------- lastOppPts length" + lastOppPts.size());
+        // printAL(lastOppPts);
+        //System.out.println("NEXT MOVE.");
+        
+        // if opponent didn't move last move, return null
+        return lastOppPts;
+    }
+    public Move getDestructorNew(Shape[] shapes, Dough dough, ArrayList<Point> savedPoints)
+    {
+
+    	for(int i=0; i<oppMoves.size(); i++)
+    	{
+    		ArrayList<Point> oppMv = oppMoves.get(i);
+    		if(oppMv.size() != 11) continue;
+    		for(int pt=0; pt<oppMv.size(); pt++)
+    		{
+    			Point putPt = new Point(oppMv.get(pt).i, oppMv.get(pt).j+1);
+    			//oppPt.j++;
+    			Shape[] rotations = shapes[1].rotations();
+    			int rt=0;
+    			for(Shape s : rotations)
+    			{
+			    	if (countDestruct==0) {
+			    		return null;
+			    	}
+    				if(dough.cuts(s, putPt) && !Utils.inSavedPoints(s, putPt, savedPoints))
+    				{
+    					// oppMoves.remove(pt);
+    					oppMoves.remove(i);
+    					countDestruct--;
+    					return new Move(1,rt,putPt);
+    					
+    				}
+    				rt++;
+    			}
+    		}
+    	}
+    	return null;
+    }
 
 }

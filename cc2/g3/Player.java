@@ -107,6 +107,52 @@ public class Player implements cc2.sim.Player {
 	return new Shape(cutter);
     }
 
+	private int[][] getScoreBoard(Dough d, Shape[] shapes, Shape[] opponent_shapes) {
+		int[][] score = new int[d.side()][d.side()];
+		for (int i = 0 ; i != SIDE ; ++i) {
+			for (int j = 0 ; j != SIDE ; ++j) {
+				Point p = new Point(i, j);
+				for (int si = 0 ; si <= 2 ; ++si) {
+					if (shapes[si] != null) {
+						Shape[] rotations = shapes[si].rotations();
+						for (int ri = 0 ; ri != rotations.length ; ++ri) {
+							Shape s = rotations[ri];
+							if (d.cuts(s,p)) {
+								for (Point sp: s) {
+									score[i + sp.i][j + sp.j] --;
+								}
+							}
+						}
+					}
+					if (opponent_shapes[si] != null) {
+						Shape[] rotations = opponent_shapes[si].rotations();
+						for (int ri = 0; ri != rotations.length; ++ri) {
+							Shape s = rotations[ri];
+							if (d.cuts(s, p)) {
+								for (Point sp: s) {
+									score[i + sp.i][j + sp.j] ++;
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+		return score;
+	}
+
+	private int getScoreOfMove(int[][] scoreBoard, Shape[] shapes, Move m) {
+		Shape s = shapes[m.shape].rotations()[m.rotation];
+		Point p = m.point;
+
+		int ret = 0;
+		for (Point sp: s) {
+			ret += scoreBoard[p.i + sp.i][p.j + sp.j];
+		}
+		return ret;
+	}
+
+
     private int getScore(gameState state) {
 	int score = 0;
 	// our possible moves
@@ -267,6 +313,7 @@ public class Player implements cc2.sim.Player {
     // function that will be called multiple times in real_cut with different parameters. set searchDough to opponent for behavior from last submission
     public Move find_cut(Dough dough, Dough searchDough, Shape[] shapes, Shape[] opponent_shapes, int maxCutterIndex) { 
 	ArrayList <ComparableMove> moves = new ArrayList <ComparableMove> ();
+		int[][] scoreBoard = getScoreBoard(dough, shapes, opponent_shapes);
 	for (int i = 0 ; i != searchDough.side() ; ++i)
 	    for (int j = 0 ; j != searchDough.side() ; ++j) {
 		Point p = new Point(i, j);
@@ -276,7 +323,9 @@ public class Player implements cc2.sim.Player {
 		    for (int ri = 0 ; ri != rotations.length ; ++ri) {
 			Shape s = rotations[ri];
 			if (dough.cuts(s,p) && searchDough.cuts(s,p)) {
-			    moves.add(new ComparableMove(new Move(si, ri, p), touched_edges(s,p,searchDough), s.size()));
+				Move m = new Move(si, ri, p);
+				moves.add(new ComparableMove(m, getScoreOfMove(scoreBoard, shapes, m),touched_edges(s,p,searchDough)));
+			    // moves.add(new ComparableMove(new Move(si, ri, p), touched_edges(s,p,searchDough), s.size()));
 			}
 		    }
 		}
@@ -342,7 +391,7 @@ public class Player implements cc2.sim.Player {
 		}*/
 		//else { 
 		    gameState state = new gameState(dough, true, shapes, opponent_shapes);
-		    gameState opt_state = minimax(state,minimax_search_depth,minimax_cutter_index);
+		    gameState opt_state = minimax(state, minimax_search_depth, minimax_cutter_index);
 		    System.out.println("Move D");
 		    if (opt_state.move_history.size() == 0) {
 			return random_move(state);
