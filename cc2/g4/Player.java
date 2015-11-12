@@ -479,7 +479,7 @@ public class Player implements cc2.sim.Player {
     return -1;
   }
 
-  private int findNumberOfOpponentMovesLostAfterCut(
+  private int scoreOpponentMovesLostAfterCut(
     Dough d, Move m, Shape[] shapes, Shape[] opp_shapes) {
     int r = 0;
     Shape s = shapes[m.shape].rotations()[m.rotation];
@@ -505,7 +505,7 @@ public class Player implements cc2.sim.Player {
             if (d.cuts(x, p)) {
               for (int k = 0 ; k != taken.length ; ++k) {
                 if (p.equals(taken[k])) {
-                  moves++;
+                  moves += x.size();
                 }
               }
             }
@@ -538,7 +538,7 @@ public class Player implements cc2.sim.Player {
 
   private int scoreMove(
     Dough d, Move m, Shape[] shapes, Shape[] opp_shapes) {
-    return findNumberOfOpponentMovesLostAfterCut(d, m, shapes, opp_shapes);
+    return scoreOpponentMovesLostAfterCut(d, m, shapes, opp_shapes);
   }
 
 }
