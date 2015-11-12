@@ -156,6 +156,7 @@ public class Player implements cc2.sim.Player {
     // System.out.println("Our move: ("+cut.shape+", "+cut.rotation+", "+cut.point+")");
     lastDough.cut(shapes[cut.shape].rotations()[cut.rotation], cut.point);
 
+    locations11.add(cut.point);
     return cut;
   }
 
