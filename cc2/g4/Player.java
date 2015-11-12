@@ -162,15 +162,9 @@ public class Player implements cc2.sim.Player {
   public Move realCut(Dough dough, Shape[] shapes, Shape[] opponent_shapes)
   {
     boolean oppPlayed = getOppMove(dough, opponent_shapes);
-    // prune larger shapes if initial move
+    // put smallest shape in middle if initial move
     if (dough.uncut()) {
-      int min = Integer.MAX_VALUE;
-      for (Shape s : shapes)
-        if (min > s.size())
-          min = s.size();
-      for (int s = 0 ; s != shapes.length ; ++s)
-        if (shapes[s].size() != min)
-          shapes[s] = null;
+      return new Move(2, 0, new Point(dough.side()/2, dough.side()/2));
     }
     // find all valid cuts
     ArrayList <Move> moves = new ArrayList <Move> ();
@@ -199,27 +193,39 @@ public class Player implements cc2.sim.Player {
       if (oppPlayed) {
         return aggressiveCut(shapes, opponent_shapes, idealMoves);
       }
-      // return idealMoves.get(idealMoves.size() - 1);
-      // return idealMoves.get(0);
     }
-    Move move = moves.get(0);
-    Shape s = shapes[move.shape];
-    if (s.size() == 5) {
-      for (Move m : moves) {
-        boolean reserved = false;
-        for (Point p : locations11) {
-          if (m.point.i>=p.i && m.point.i<p.i+2 && m.point.j>=p.j && m.point.j<p.j+2) {
-            reserved = true;
-            break;
-          }
-        }
-        if (!reserved) {
-          System.out.println("\nasdfsadfasd\n");
-          return m;
-        }
+    int bestScore = -1;
+    Move bestMove = null;
+    for (Move m : moves) {
+      int score = scoreMove(dough, m, shapes, opponent_shapes);
+      if (score > bestScore) {
+        bestScore = score;
+        bestMove = m;
       }
     }
-    return move;
+    System.out.println(bestScore);
+    System.out.println(bestMove.point.i);
+    System.out.println(bestMove.point.j);
+    return bestMove;
+
+    // Move move = moves.get(0);
+    // Shape s = shapes[move.shape];
+    // if (s.size() == 5) {
+    //   for (Move m : moves) {
+    //     boolean reserved = false;
+    //     for (Point p : locations11) {
+    //       if (m.point.i>=p.i && m.point.i<p.i+2 && m.point.j>=p.j && m.point.j<p.j+2) {
+    //         reserved = true;
+    //         break;
+    //       }
+    //     }
+    //     if (!reserved) {
+    //       System.out.println("\nasdfsadfasd\n");
+    //       return m;
+    //     }
+    //   }
+    // }
+    // return move;
   }
 
   private boolean isIdeal(Dough dough, int rotation, int i, int j) {
@@ -445,17 +451,17 @@ public class Player implements cc2.sim.Player {
     return -1;
   }
 
-  private int findNumberOfPossibleMovesWithShapeAfterCut(Shape shape, Dough d, Move m, Shape[] shapes) {
+  private int findNumberOfOpponentMovesLostAfterCut(
+    Dough d, Move m, Shape[] shapes, Shape[] opp_shapes) {
     int r = 0;
-    Shape s = shapes[m.shape];
-    s = s.rotations()[m.rotation];
+    Shape s = shapes[m.shape].rotations()[m.rotation];
     Iterator<Point> shapePoints = s.iterator();
     Point[] taken = new Point [s.size()];
     int a = 0;
     while (a < s.size()) {
-      taken[a] = shapePoints.next();
-      int x = taken[a].i + m.point.i;
-      int y = taken[a].j + m.point.j;
+      Point p = shapePoints.next();
+      int x = p.i + m.point.i;
+      int y = p.j + m.point.j;
       taken[a] = new Point(x, y);
       a++;
     }
@@ -463,21 +469,48 @@ public class Player implements cc2.sim.Player {
     for (int i = 0 ; i != d.side() ; ++i) {
       for (int j = 0 ; j != d.side() ; ++j) {
         Point p = new Point(i, j);
-        for (int k = 0 ; k != s.size() ; ++k) {
-          if (p.equals(taken[k])) {
-            continue;
-          }
-        }
-        Shape[] rotations = shape.rotations();
-        for (int ri = 0 ; ri != rotations.length ; ++ri) {
-          Shape x = rotations[ri];
-          if (d.cuts(x, p)) {
-            moves++;
+        for (int si = 0 ; si != shapes.length ; ++si) {
+          if (shapes[si] == null) continue;
+          Shape[] rotations = opp_shapes[si].rotations();
+          for (int ri = 0 ; ri != rotations.length ; ++ri) {
+            Shape x = rotations[ri];
+            if (d.cuts(x, p)) {
+              for (int k = 0 ; k != taken.length ; ++k) {
+                if (p.equals(taken[k])) {
+                  moves++;
+                }
+              }
+            }
           }
         }
       }
     }
     return moves;
+  }
+
+  private int findNumberofPossibleMoves(Dough d, Shape[] shapes) {
+    int moves = 0;
+    for (int i = 0 ; i != d.side() ; ++i) {
+      for (int j = 0 ; j != d.side() ; ++j) {
+        Point p = new Point(i, j);
+        for (int si = 0 ; si != shapes.length ; ++si) {
+          if (shapes[si] == null) continue;
+          Shape[] rotations = shapes[si].rotations();
+          for (int ri = 0 ; ri != rotations.length ; ++ri) {
+            Shape s = rotations[ri];
+            if (d.cuts(s, p)) {
+              moves++;
+            }
+          }
+        }
+      }
+    }
+    return moves;
+  }
+
+  private int scoreMove(
+    Dough d, Move m, Shape[] shapes, Shape[] opp_shapes) {
+    return findNumberOfOpponentMovesLostAfterCut(d, m, shapes, opp_shapes);
   }
 
 }
