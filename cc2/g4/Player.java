@@ -122,7 +122,7 @@ public class Player implements cc2.sim.Player {
         for (count = 0; count < length - 1; count++) {
           cutter[count] = new Point(count, 0);
         }
-        cutter[count] = new Point(gen.nextInt(count), 1);
+        cutter[count] = new Point(gen.nextInt(count - 1) + 1, 1);
         shape = new Shape(cutter);
       }
       System.out.println("g4 (2) " + length + ": " + shape);
@@ -276,11 +276,6 @@ public class Player implements cc2.sim.Player {
       points[i] = new Point(0, i);
     }
     points[points.length - 1] = new Point(1, hockeySide == 0 ? points.length - 2 : 0);
-    backup8shapes.add(new Shape(points));
-
-    for (int i = 0; i < points.length; i++) {
-      points[i] = new Point(i / 4, i % 4);
-    }
     backup8shapes.add(new Shape(points));
   }
   
@@ -539,7 +534,7 @@ public class Player implements cc2.sim.Player {
 
   private int scoreMove(
     Dough d, Move m, Shape[] shapes, Shape[] opp_shapes) {
-    return scoreOpponentMovesLostAfterCut(d, m, shapes, opp_shapes);
+    return shapes[m.shape].size() + scoreOpponentMovesLostAfterCut(d, m, shapes, opp_shapes);
   }
 
 }
