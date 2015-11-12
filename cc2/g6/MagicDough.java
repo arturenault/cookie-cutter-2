@@ -19,6 +19,8 @@ public class MagicDough {
 
     private Move lastMove;
 
+    private ArrayList<Move> lastMoves;
+
     private Shape your_cutters[], oppo_cutters[];
 
     private Map<Window, Long> dirty_mine = new HashMap<>();
@@ -196,6 +198,7 @@ public class MagicDough {
             }
         }
         lastMove = m;
+//        lastMoves.add(m);
         return true;
     }
 
@@ -211,6 +214,23 @@ public class MagicDough {
             }
         }
         lastMove = null;
+    }
+
+    public void undoLastKMoves(Shape s[], int k) {
+        if (!lastMoves.isEmpty()) {
+            int numMoves = lastMoves.size();
+            for (int i = numMoves-1; i >= numMoves-k; i--) {
+                Move lastMove = lastMoves.get(i);
+                for (Point p : s[lastMove.shape].rotations()[lastMove.rotation]) {
+                    data[p.i + lastMove.point.i][p.j + lastMove.point.j] = 0;
+                    Point pp = new Point(p.i + lastMove.point.i, p.j + lastMove.point.j);
+                    for (Window w : reverse_window_lookup.get(pp)) {
+                        dirty_mine.put(w, null);
+                        dirty_oppo.put(w, null);
+                    }
+                }
+            }
+        }
     }
 
     public Window effectWindow(int i, int j) {

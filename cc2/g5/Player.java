@@ -13,6 +13,7 @@ public class Player implements cc2.sim.Player {
     private PriorityQueue<MoveCosts> priorityQueue;
 
     public static final int NUMBER_OF_MOVES = 1000;
+    public static int maxSide = 0;
 
     public Shape cutter(int length, Shape[] shapes, Shape[] opponentShapes) {
         Shape shape = null;
@@ -27,8 +28,20 @@ public class Player implements cc2.sim.Player {
         return shape;
     }
 
+    public int getMaxDimensions(Shape[] opponentShapes){
+        int max = Integer.MIN_VALUE;
+
+        for(int i=0; i<opponentShapes.length; i++){
+            Point dimensions = ShapeGenerator.getDimensions(opponentShapes[i]);
+            if(Math.max(dimensions.i, dimensions.j) > max)
+                max = Math.max(dimensions.i, dimensions.j);
+        }
+        return max;         
+    }
+
     public Move cut(Dough dough, Shape[] shapes, Shape[] opponentShapes) {
         priorityQueue = new PriorityQueue<>(new MoveComparator(shapes, opponentShapes, dough, moveHistory));
+        maxSide = getMaxDimensions(opponentShapes);
         
         HashMap<Integer, ArrayList<Move>> moveSet = Utils.generateMoves(dough, shapes);
 
@@ -52,12 +65,12 @@ public class Player implements cc2.sim.Player {
         Move nextMove = priorityQueue.poll().move;
 
         moveHistory.add(nextMove);
-        debugMove(nextMove);
+        // debugMove(nextMove);
         return nextMove;
     }
 
     public void debugMove(Move move){
-    	//System.out.println("i: " + move.point.i + " j: " + move.point.j);
+    	// System.out.println("i: " + move.point.i + " j: " + move.point.j);
     }
 
     public void pushToPriorityQueue(Shape[] shapes, PriorityQueue<MoveCosts> priorityQueue, ArrayList<Move> moves, Dough dough, Shape[] cutters, Shape[] oppCutters){
@@ -74,25 +87,22 @@ public class Player implements cc2.sim.Player {
             Point moveCenterPoint = Utils.getCenterOfAMove(shapes, m);
             double distance = Utils.distance(moveCenterPoint, centerPoint);
 
-            Point dimens = ShapeGenerator.getDimensions(oppCutters[0]);
-            int maxSide = Math.max(dimens.i, dimens.j);
-
             int minX = Math.max(0, m.point.i - maxSide);
             int maxX = Math.min(dough.side(), m.point.i + maxSide);
 
             int minY = Math.max(0, m.point.j - maxSide);
             int maxY = Math.min(dough.side(), m.point.j + maxSide);
 
-            int playerMovesBefore = Utils.totalMoves(Utils.generateMoves(mDough, minX, maxX, minY, maxY, cutters));
-            int opponentMovesBefore = Utils.totalMoves(Utils.generateMoves(mDough, minX, maxX, minY, maxY, cutters));
+            //int playerMovesBefore = Utils.totalMoves(Utils.generateMoves(mDough, minX, maxX, minY, maxY, cutters));
+            //int opponentMovesBefore = Utils.totalMoves(Utils.generateMoves(mDough, minX, maxX, minY, maxY, cutters));
 
             mDough.cut(cutters[m.shape].rotations()[m.rotation], m.point);
 
             int playerMovesAfter = Utils.totalMoves(Utils.generateMoves(mDough, cutters));
             int opponentMovesAfter = Utils.totalMoves(Utils.generateMoves(mDough, cutters));
 
-            float playerMoves = (float)playerMovesAfter/(float)playerMovesBefore;
-            float opponentMoves = (float)opponentMovesAfter/(float)opponentMovesBefore;
+            float playerMoves = playerMovesAfter;//(float)playerMovesAfter/(float)playerMovesBefore;
+            float opponentMoves = opponentMovesAfter;//(float)opponentMovesAfter/(float)opponentMovesBefore;
             
             mDough.undoCut(cutters[m.shape].rotations()[m.rotation], m.point);
 
