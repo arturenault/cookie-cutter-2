@@ -20,6 +20,9 @@ public class Player implements cc2.sim.Player {
   private int mode = 0;
 
   private Queue<Shape> backup8shapes;
+  private Queue<Shape> backup5shapes;
+
+  private ArrayList<Point> locations11 = new ArrayList<Point>();
 
   // aggressive cuts variables
   ArrayList<Move> oppMoves = new ArrayList<>();
@@ -31,6 +34,7 @@ public class Player implements cc2.sim.Player {
       firstRun = false;
 
       populateBackup8Shapes();
+      populateBackup5Shapes();
     }
 
     Point[] cutter = new Point[length];
@@ -137,17 +141,7 @@ public class Player implements cc2.sim.Player {
         }
       } else {
         mode = 1;
-        int count = 0;
-        for (int i = 0; i < 4; i++) {
-          cutter[count++] = new Point(i, 0);
-        }
-        if (lineAvailable) {
-          cutter[count] = new Point(4, 0);
-          lineAvailable = false;
-        } else {
-          int extra = gen.nextInt(4);
-          cutter[count] = new Point(extra, 1);
-        }
+        return backup5shapes.poll();
       }
     }
     System.out.println("g4 (3) " + length + ": " + new Shape(cutter));
@@ -208,29 +202,46 @@ public class Player implements cc2.sim.Player {
       // return idealMoves.get(idealMoves.size() - 1);
       // return idealMoves.get(0);
     }
-    return moves.get(0);
+    Move move = moves.get(0);
+    Shape s = shapes[move.shape];
+    if (s.size() == 5) {
+      for (Move m : moves) {
+        boolean reserved = false;
+        for (Point p : locations11) {
+          if (m.point.i>=p.i && m.point.i<p.i+2 && m.point.j>=p.j && m.point.j<p.j+2) {
+            reserved = true;
+            break;
+          }
+        }
+        if (!reserved) {
+          System.out.println("\nasdfsadfasd\n");
+          return m;
+        }
+      }
+    }
+    return move;
   }
 
   private boolean isIdeal(Dough dough, int rotation, int i, int j) {
     switch (rotation) {
       case 0:
         if (i + 3 == dough.side() - 1 ||
-          (!dough.uncut(i + 4, j + 1) && !dough.uncut(i + 4, j + 2)))
+          (!dough.uncut(i + 4, j + 1) && !dough.uncut(i + 4, j + 2) && dough.uncut(i + 3, j + 1) && dough.uncut(i + 3, j + 2)))
           return true;
         return false;
       case 1:
         if (j == 0 ||
-          (!dough.uncut(i + 1, j - 1) && !dough.uncut(i + 2, j - 1)))
+          (!dough.uncut(i + 1, j - 1) && !dough.uncut(i + 2, j - 1) && dough.uncut(i + 1, j) && dough.uncut(i + 2, j)))
           return true;
         return false;
       case 2:
         if (i == 0 ||
-          (!dough.uncut(i - 1, j + 1) && !dough.uncut(i - 1, j + 2)))
+          (!dough.uncut(i - 1, j + 1) && !dough.uncut(i - 1, j + 2) && dough.uncut(i, j + 1) && dough.uncut(i, j + 2)))
           return true;
         return false;
       case 3:
         if (j + 3 == dough.side() - 1 ||
-          (!dough.uncut(i + 1, j + 4) && !dough.uncut(i + 2, j + 4)))
+          (!dough.uncut(i + 1, j + 4) && !dough.uncut(i + 2, j + 4) && dough.uncut(i + 1, j + 3) && dough.uncut(i + 2, j + 3)))
           return true;
         return false;
     }
@@ -241,25 +252,67 @@ public class Player implements cc2.sim.Player {
     backup8shapes = new java.util.concurrent.ConcurrentLinkedQueue<Shape>();
 
     Point[] points = new Point[8];
+
+    for(int i = 0; i < points.length; i++) {
+      points[i] = new Point(i, 0);
+    }
+    backup8shapes.add(new Shape(points));
+
+    for(int i = 0; i < points.length - 1; i++) {
+      points[i] = new Point(0, i);
+    } 
+    int hockeySide = gen.nextInt(2);
+    points[points.length - 1] = new Point(1, hockeySide == 0 ? 0 : points.length - 2);
+    backup8shapes.add(new Shape(points));
+
+    for(int i = 0; i < points.length - 1; i++) {
+      points[i] = new Point(0, i);
+    }
+    points[points.length - 1] = new Point(1, hockeySide == 0 ? points.length - 2 : 0);
+    backup8shapes.add(new Shape(points));
+
+    for (int i = 0; i < points.length; i++) {
+      points[i] = new Point(i / 4, i % 4);
+    }
+    backup8shapes.add(new Shape(points));
+  }
+  
+  private void populateBackup5Shapes() {
+    backup5shapes = new java.util.concurrent.ConcurrentLinkedQueue<Shape>();
+
+    Point[] points = new Point[5];
     Shape shape;
 
     for(int i = 0; i < points.length; i++) {
       points[i] = new Point(i, 0);
     }
-    shape = new Shape(points);
-    backup8shapes.add(shape);
+    backup5shapes.add(new Shape(points));
 
-    for(int i = 0; i < points.length; i++) {
-      points[i] = new Point(i / 4, i % 4);
-    }
-    shape = new Shape(points);
-    backup8shapes.add(shape);
+    for(int i = 0; i < points.length - 1; i++) {
+      points[i] = new Point(0, i);
+    } 
+    int hockeySide = gen.nextInt(2);
+    points[points.length - 1] = new Point(1, hockeySide == 0 ? 0 : points.length - 2);
+    backup5shapes.add(new Shape(points));
 
-    for(int i = 0; i < points.length; i++) {
-      points[i] = new Point(i / 3, i % 3);
+    for(int i = 0; i < points.length - 1; i++) {
+      points[i] = new Point(0, i);
     }
-    shape = new Shape(points);
-    backup8shapes.add(shape);
+    points[points.length - 1] = new Point(1, hockeySide == 0 ? points.length - 2 : 0);
+    backup5shapes.add(new Shape(points));
+  
+    for(int i = 0; i < points.length - 1; i++) {
+      points[i] = new Point(0,i);
+    }
+    int extra = gen.nextInt(2) + 1;
+    points[points.length - 1] = new Point(1, extra);
+    backup5shapes.add(new Shape(points));
+
+    for(int i = 0; i < points.length - 1; i++) {
+      points[i] = new Point(0,i);
+    }
+    points[points.length - 1] = new Point(1, 3 - extra);
+    backup5shapes.add(new Shape(points));
   }
 
   /**
@@ -420,15 +473,33 @@ public class Player implements cc2.sim.Player {
     return -1;
   }
 
-  private int findNumberOfPossibleMovesWithShape(Shape shape, Dough d) {
+  private int findNumberOfPossibleMovesWithShapeAfterCut(Shape shape, Dough d, Move m, Shape[] shapes) {
+    int r = 0;
+    Shape s = shapes[m.shape];
+    s = s.rotations()[m.rotation];
+    Iterator<Point> shapePoints = s.iterator();
+    Point[] taken = new Point [s.size()];
+    int a = 0;
+    while (a < s.size()) {
+      taken[a] = shapePoints.next();
+      int x = taken[a].i + m.point.i;
+      int y = taken[a].j + m.point.j;
+      taken[a] = new Point(x, y);
+      a++;
+    }
     int moves = 0;
     for (int i = 0 ; i != d.side() ; ++i) {
       for (int j = 0 ; j != d.side() ; ++j) {
         Point p = new Point(i, j);
+        for (int k = 0 ; k != s.size() ; ++k) {
+          if (p.equals(taken[k])) {
+            continue;
+          }
+        }
         Shape[] rotations = shape.rotations();
         for (int ri = 0 ; ri != rotations.length ; ++ri) {
-          Shape s = rotations[ri];
-          if (d.cuts(s, p)) {
+          Shape x = rotations[ri];
+          if (d.cuts(x, p)) {
             moves++;
           }
         }

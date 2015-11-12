@@ -57,6 +57,7 @@ public class ModdableDough extends Dough {
         }
         return true;
     }
+
     // check if specific position can be cut
     public boolean uncut(Point q) {
         return uncut(q.i, q.j);
