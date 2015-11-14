@@ -8,15 +8,29 @@ import cc2.sim.Move;
 import java.util.*;
 
 public class Player implements cc2.sim.Player {
-
-	private boolean[] row_2 = new boolean [0];
-	
-	private Random gen = new Random();
+ 
 	int[] shapeIndex = new int[3];
 	DiagonalShapes dg;
-	
+	AggressiveStepOptimisation aso;
+/*	DiagonalStrategy ds;
+	AggressiveSpaceStrategy ass;
+	AggressiveStrategy as;
+	NaiveLineShapes nl;
+		KostaShapes ks;
+ */
+	DiagonalRadialPackingv2 drpV2;
+	DiagonalStrategyv2 ds2;
 	public Player(){
 		 dg=new DiagonalShapes();
+
+/*				 ks=new KostaShapes();
+ * 				 ds=new DiagonalStrategy();
+		 ass=new AggressiveSpaceStrategy();
+		 as= new AggressiveStrategy();
+		 nl=new NaiveLineShapes();
+	 */
+		 drpV2 = new DiagonalRadialPackingv2();
+		 aso= new AggressiveStepOptimisation();
 	}
 	
 	public Shape cutter(int length, Shape[] shapes, Shape[] opponent_shapes)
@@ -27,10 +41,7 @@ public class Player implements cc2.sim.Player {
 	
 	public Move cut(Dough dough, Shape[] shapes, Shape[] opponent_shapes)
 	{
-		//AggressiveStrategy strategy=new AggressiveStrategy();
-		AggressiveSpaceStrategy strategy=new AggressiveSpaceStrategy();
-		return strategy.cut(  dough,  shapes,  opponent_shapes);
-		
+		return aso.cut(  dough,  shapes,  opponent_shapes);
 	}
 	
 	

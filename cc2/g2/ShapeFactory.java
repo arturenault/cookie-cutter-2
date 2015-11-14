@@ -52,18 +52,69 @@ public class ShapeFactory {
 		
 		ArrayList<Shape> shapes = new ArrayList<Shape>();
 		shapes.add(new Shape(s1));
-		if(length == 11)
+		//if(length == 11)
 			shapes.add(new Shape(s2));
 		shapes.add(new Shape(s3));
-		if(length != 11)
-			shapes.add(new Shape(s2));
-		shapes.add(new Shape(s4));
+		//if(length != 11)
+		//	shapes.add(new Shape(s2));
 		shapes.add(new Shape(s5));
+		shapes.add(new Shape(s4));
 		
 		return shapes;
 	}
 	
-	public static Shape getNext(int length) {
+	private static boolean isL(Shape eleven) {
+		int length = eleven.size();
+		int[] cols = new int[11];
+		int[] rows = new int[11];
+		
+		int minRow = Integer.MAX_VALUE;
+		int maxRow = -1;
+		int minCol = Integer.MAX_VALUE;
+		int maxCol = -1;
+		
+		for(Point p : eleven) {
+			cols[p.j]++;
+			rows[p.i]++;
+			minRow = Math.min(p.i, minRow);
+			minCol = Math.min(p.j, minCol);
+			maxRow = Math.max(p.i, maxRow);
+			maxCol = Math.max(p.j, maxCol);
+		}
+		
+		int nAboveOneRow = 0;
+		int nAboveOneCol = 0;
+		int lCol = -1;
+		int lRow = -1;
+		for (int i = 0; i < length; i++) {
+			if (rows[i] > 1) {
+				++nAboveOneRow;
+				lRow = i;
+			}
+			if (cols[i] > 1) {
+				++nAboveOneCol;
+				lCol = i;
+			}
+		}
+		
+		System.out.println(nAboveOneCol);
+		System.out.println(nAboveOneRow);
+		System.out.println(lCol);
+		System.out.println(lRow);
+		System.out.println(cols[lCol]);
+		System.out.println(rows[lRow]);
+		
+		if(nAboveOneRow != 1 || nAboveOneCol != 1)
+			return false;
+		if(lCol != minCol && lCol != maxCol)
+			return false;
+		if(lRow != minRow && lRow != maxRow)
+			return false;
+		System.out.println("TRUE");
+		return true;
+	}
+	
+	public static Shape getNext(int length, Shape[] opponent) {
 		List<Shape> arr = fives;
 		if(length == 11)
 			arr = elevens;
@@ -83,13 +134,39 @@ public class ShapeFactory {
 				for(int i = 0; i < s1five.length; ++i) {
 					s1five[i] = new Point(i/2, i/2+i%2);
 				}
+				Point[] s1eight = new Point[8];
+				for(int i = 0; i < s1eight.length; ++i) {
+					s1eight[i] = new Point(i/4, i%4);
+				}
+				//eights.set(0, new Shape(s1eight));
 				eights.set(1, new Shape(s2eight));
 				fives.set(0, new Shape(s1five));
 				Player.tileDiagonal();
 			}
+			if(elevenChoice > 1) {
+				Point[] s1five = new Point[5];
+				for(int i = 0; i < s1five.length; ++i) {
+					s1five[i] = new Point(i, 0);
+				}
+				fives.set(0, new Shape(s1five));
+				Point[] s2eight = new Point[8];
+				for(int i = 0; i < s2eight.length; ++i) {
+					s2eight[i] = new Point(i, 0);
+				}
+				s2eight[s2eight.length-1] = new Point(0, 1);
+				eights.set(1, new Shape(s2eight));
+				Player.tileStraight();
+			}
 		}
 		if(length == 8 && elevenChoice == 1) {
 			++eightChoice;
+			if(eightChoice == 0 && isL(opponent[0]) && Player.getHookType(opponent[0]) == 0) {
+				Point[] s1eight = new Point[8];
+				for(int i = 0; i < s1eight.length; ++i) {
+					s1eight[i] = new Point(i/4, i%4);
+				}
+				next = new Shape(s1eight);
+			}
 			if(eightChoice == 1) {
 				Point[] s1= new Point[5];
 				for(int i = 0; i < s1.length; ++i) {

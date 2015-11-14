@@ -19,7 +19,7 @@ public class MagicDough {
 
     private Move lastMove;
 
-    private ArrayList<Move> lastMoves;
+    private ArrayList<Move> lastMoves = new ArrayList<>();
 
     private Shape your_cutters[], oppo_cutters[];
 
@@ -198,7 +198,7 @@ public class MagicDough {
             }
         }
         lastMove = m;
-//        lastMoves.add(m);
+        lastMoves.add(m);
         return true;
     }
 

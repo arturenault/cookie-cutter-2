@@ -27,7 +27,11 @@ public class Utils {
             int j = (-1)*i + colOffset;
             if (j >= 0 && j < dough.side()){
                 Point thisPt = new Point(i, j);
-                Move thisMv = new Move(0, 2, thisPt);
+                int rotation = 0;
+                if(s.equals(new Shape(get11HockeyShape_1()))){
+                	rotation = 2;
+                }
+                Move thisMv = new Move(0, rotation, thisPt);
                 if (dough.cuts(s, thisPt)){
                     return thisMv;
                 } 
@@ -51,16 +55,17 @@ public class Utils {
                                 isPrevMove2 = true;
                             }
                         }
+
                         // check if we have chosen a backup neighboring position already
                         if ( isPrevMove2 == false) {
                             if (dough.cuts(s, topPt)) {
-                                return new Move(0, 2, topPt);
+                                return new Move(0, rotation, topPt);
                             }else if (dough.cuts(s, bottomPt)) {
-                                return new Move(0, 2, bottomPt);
+                                return new Move(0, rotation, bottomPt);
                             }else if (dough.cuts(s, top2Pt)) {
-                                return new Move(0, 2, top2Pt);
+                                return new Move(0, rotation, top2Pt);
                             }else if (dough.cuts(s, bottom2Pt)) {
-                                return new Move(0, 2, bottom2Pt);
+                                return new Move(0, rotation, bottom2Pt);
                             }
                         }
                     }
@@ -74,7 +79,11 @@ public class Utils {
         System.out.println("size of shapes" + shapes.length);
         System.out.println("size of shapes rotation" + shapes[0].rotations().length);
         Shape[] rotations = shapes[0].rotations();
-        Shape s = rotations[2];
+        Shape s = rotations[0];
+        if(shapes[0].equals(new Shape(get11HockeyShape_1()))){
+            s = rotations[2];
+        }
+
         int[] colOffsets = {44, 33, 55, 22, 66, 11, 77};
         int[] densityOffsets = {4, 3, 2, 1};
 
@@ -84,7 +93,11 @@ public class Utils {
                     int j = (-1)*i + colOffset;
                     if (j >=0) {
                         Point thisPt = new Point(i, j);
-                        Move thisMv = new Move(0, 2, thisPt);
+                        int rotation = 0;
+                        if(shapes[0].equals(new Shape(get11HockeyShape_1()))){
+                        	rotation = 2;
+                        }
+                        Move thisMv = new Move(0, rotation, thisPt);
                         if (dough.cuts(s, thisPt)){
                             return thisMv;
                         } 
@@ -160,8 +173,11 @@ public class Utils {
     	
     	Shape[] rotations = shapes[0].rotations();
     	Shape[] op_rotations = opponent_shapes[0].rotations();
-        Shape s = rotations[2];
-        
+        Shape s = rotations[0];
+        if(shapes[0].equals(new Shape(get11HockeyShape_1()))){
+            s = rotations[2];
+        }
+
         while(gap>0)
         {
         	int side = 6 + gap;
@@ -201,10 +217,20 @@ public class Utils {
     public static Move getDefenseIndex(Dough dough, Shape[] shapes, Shape[] opponent_shapes, Point lastOppMove, ArrayList<Move> prevDefMoves) {
 
         Shape[] rotations = shapes[0].rotations();
-        Shape s = rotations[2];
+        Shape s = rotations[0];
         
+        if(shapes[0].equals(new Shape(get11HockeyShape_1()))){
+            s = rotations[2];
+        }
         
         int gapOffset = getGapOffset(shapes, opponent_shapes);
+        int[] colOffsets = {44, 33, 55, 22, 66, 11, 77};
+
+        if(shapes[0].equals(new Shape(get11HockeyShape_2()))){
+        	System.out.println("Increment offset");
+        	gapOffset++;
+        }
+
         boolean flag4 = gapOffset == 4 ? true : false;
         
         ArrayList<Move> queueMoves = new ArrayList<Move>();
@@ -297,5 +323,69 @@ public class Utils {
     	return (float)Math.sqrt(Math.pow(a.j-b.j,2) + Math.pow(a.i-b.i,2));
     }
 
+    public static Point[] get8Shape(String keyword) {
+        int length = 8;
+        Point[] cutter = new Point [length];
+        switch(keyword)
+        {
+            case "8aligned2x4":
+                for(int i=0; i<length; i++){
+                    if (i<4) cutter[i] = new Point(i,0);
+                    else cutter[i] = new Point(i-4,1);
+                    System.out.println(cutter[i].i + ", " + cutter[i].j);
+                }
+                break;
+            case "8misAligned2x4":
+                for(int i=0; i<length; i++)
+                    if (i<4) cutter[i] = new Point(i,0);
+                    else cutter[i] = new Point(i-3,1);
+                break;
+            case "8line":
+                for(int i=0; i<length; i++)
+                    cutter[i] = new Point(i,0);
+                break;
+            case "8diag":
+                cutter[0] = new Point(0, 0);
+                cutter[1] = new Point(0, 1);
+                cutter[2] = new Point(1, 1);
+                cutter[3] = new Point(1, 2);
+                cutter[4] = new Point(2, 2);
+                cutter[5] = new Point(2, 3);
+                cutter[6] = new Point(3, 3);
+                cutter[7] = new Point(3, 4);
+                break;
+        }
+
+        return cutter;
+    }
+
+    public static Point[] get11HockeyShape_2(){
+		Point[] cutter = new Point [11];
+		for(int i = 0; i < 11; i++) {
+			if(i == 10){
+				cutter[i] = new Point(1,9);
+			}
+			else{
+				cutter[i] = new Point(0, i);				
+			}
+		}
+		
+		return cutter;
+    }
+
+    
+    public static Point[] get11HockeyShape_1(){
+		Point[] cutter = new Point [11];
+		for(int i = 0; i < 11; i++) {
+			if(i == 10){
+				cutter[i] = new Point(1,0);
+			}
+			else{
+				cutter[i] = new Point(0, i);				
+			}
+		}
+		
+		return cutter;    	
+    }
 
 }

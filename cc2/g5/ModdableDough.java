@@ -40,10 +40,6 @@ public class ModdableDough extends Dough {
         return super.n_cuts == size;
     }
 
-    public int get_size() {
-        return size;
-    }
-
     public boolean cut(Point q) {
         dough[q.i][q.j] = true;
         n_cuts++;

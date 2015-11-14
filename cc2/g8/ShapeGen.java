@@ -59,15 +59,7 @@ public class ShapeGen {
 	public Shape changeShape(Shape shape, List<Shape> used_shapes) {
 		Map<Integer, List<Integer>> pairs = new HashMap<Integer, List<Integer>>();
 
-		Map<Integer, List<Integer>> newpairs = new HashMap<Integer, List<Integer>>();
-		newpairs.put(0, Arrays.asList(0, 1, 2));
-		newpairs.put(1, Arrays.asList(0, 2));
 		Shape newShape = shape;
-
-		if (shape.size() == 5 && !shape.equals(returnShape(newpairs, shape.size()))) {
-			newShape = returnShape(newpairs, shape.size());
-		}
-		else {
 
 			Shape s;
 			if (shape.size() == 8) {
@@ -81,7 +73,7 @@ public class ShapeGen {
 
 			newShape = s;
 			boolean match = false;
-			int i = shape.size() - 1;
+			int i = 0, j = 0, k = 1;
 			for (Shape n : used_shapes) {
 				if (n.equals(newShape)) {
 					match = true;
@@ -100,10 +92,17 @@ public class ShapeGen {
 				else if (shape.size() == 5 && pairs.get(0).contains(shape.size() - 1)) {
 					pairs.put(0, Arrays.asList(0, 1, 2, 3));
 				}
-				pairs.put(1, Arrays.asList(i - 1));
-
-				i--;
+				if (i % 2 == 0) {
+					pairs.put(1, Arrays.asList(j));
+					k++;
+				}
+				else {
+					pairs.put(1, Arrays.asList(shape.size() - k));
+					j++;
+				}
+				i++;
 				newShape = returnShape(pairs, shape.size());
+				System.out.println("NEW SHAPE : " + newShape);
 
 				for (Shape n : used_shapes) {
 					if (n.equals(newShape)) {
@@ -117,8 +116,6 @@ public class ShapeGen {
 					match = true;
 				}
 			}
-
-		}
 
 		return newShape;
 	}

@@ -9,74 +9,49 @@ import java.util.ArrayList;
 
 public class ShapeGenerator {
 
-    // add a pi
     private static boolean fittedShapeUsed = false;
-    private static Shape[] elevenShapes = {generateDiag(11), generateAlmostDiag(true), generateAlmostDiag(false), generateAntiDiag(11), generateLine(11)};
+    private static Shape[] elevenShapes = {generateLine(11), generateDiag(11), generateAlmostDiag(true), generateAlmostDiag(false), generateS()};
     private static int elevenPos = 0;
 
-    private static Shape[] eightShapes = {generateCondensedDiag(true), generateCondensedDiag(false), generateDiag(8), generateAntiDiag(8), generateLine(8)};
+    private static Shape[] eightLines = {generateLine(8), generateAlmostLine(8, true)};
+    private static int eightLinePos = 0;
+    private static Shape[] eightShapes = {generate8Block(), generateCondensedDiag(true), generateCondensedDiag(false), generateDiag(8), generateAntiDiag(8), generateLine(8)};
     private static int eightPos = 0;
 
-    private static Shape[] fiveShapes = {generateBlock(true), generateBlock(false), generateDiag(5), generateAntiDiag(5), generateU()};
+    private static Shape[] fiveShapes = {generateLine(5), generateBlock(true), generateBlock(false), generateDiag(5), generateAntiDiag(5), generateU()};
     private static int fivePos = 0;
 
+    private static Shape fittedCutter = null;
+
+
     public static Shape getNextElevenShape(Shape[] shapes, Shape[] opponentShapes) {
-        System.out.println("ep:"+elevenPos);
         return elevenShapes[elevenPos++];
     }
 
+
     public static Shape getNextEightShape(Shape[] shapes, Shape[] opponentShapes) {
+        if(Player.LineShaped(opponentShapes[0]) && eightLinePos < eightLines.length){
+            return eightLines[eightLinePos++];
+        }
         return eightShapes[eightPos++];
     }
 
     public static Shape getNextFiveShape(Shape[] shapes, Shape[] opponentShapes) {
         Shape ad_shape = getFittedShape(opponentShapes[0], 5, 0);
         if (ad_shape != null) {
-            System.out.println("Returning it for size 5: " + opponentShapes[0].size());
-            if (ad_shape.equals(fiveShapes[fivePos])){/* To avoid repeated cutter error in retry cutter! */
-                fivePos++; 
+            if (ad_shape.equals(fiveShapes[fivePos])){
+                /* To avoid repeated cutter error in retry cutter! */
+                fivePos++;
             }
+            fittedCutter = ad_shape;
             return ad_shape;
         }
-        System.out.println("Returning default : "+fivePos);
-        return fiveShapes[fivePos++];
-    }
 
-    private static Shape generateSqueege(int size) {
-        Point[] shape = new Point[size];
-
-        shape[0] = new Point(0, 0);
-        shape[1] = new Point(0, 1);
-        shape[2] = new Point(0, 2);
-        shape[3] = new Point(1, 1);
-        shape[4] = new Point(2, 0);
-        shape[5] = new Point(2, 1);
-        shape[6] = new Point(2, 2);
-        shape[7] = new Point(3, 1);
-        if (size > 8) {
-            shape[8] = new Point(4, 0);
-            shape[9] = new Point(4, 1);
-            shape[10] = new Point(4, 2);
+        if(fittedCutter != null && fiveShapes[fivePos].equals(fittedCutter)){
+            fivePos++;
         }
-        return new Shape(shape);
-    }
 
-    private static Shape generateE() {
-        Point[] shape = new Point[11];
-
-        shape[0] = new Point(0, 0);
-        shape[1] = new Point(0, 1);
-        shape[2] = new Point(0, 2);
-        shape[3] = new Point(1, 0);
-        shape[4] = new Point(2, 0);
-        shape[5] = new Point(2, 1);
-        shape[6] = new Point(2, 2);
-        shape[7] = new Point(3, 0);
-        shape[8] = new Point(4, 0);
-        shape[9] = new Point(4, 1);
-        shape[10] = new Point(4, 2);
-
-        return new Shape(shape);
+        return fiveShapes[fivePos++];
     }
 
     private static Shape generateS() {
@@ -97,45 +72,9 @@ public class ShapeGenerator {
         return new Shape(shape);
     }
 
-    private static Shape generateF(int size) {
-        Point[] shape = new Point[size];
 
-        shape[0] = new Point(0, 0);
-        shape[1] = new Point(0, 1);
-        shape[2] = new Point(0, 2);
-        shape[3] = new Point(0, 3);
-        shape[4] = new Point(1, 0);
-        shape[5] = new Point(2, 0);
-        shape[6] = new Point(1, 2);
-        shape[7] = new Point(2, 2);
-        if (size == 11) {
-            shape[8] = new Point(0, 4);
-            shape[9] = new Point(3, 0);
-            shape[10] = new Point(3, 2);
-        }
 
-        return new Shape(shape);
-    }
-
-    private static Shape generateH() {
-        Point[] shape = new Point[11];
-
-        shape[0] = new Point(0, 0);
-        shape[1] = new Point(0, 1);
-        shape[2] = new Point(0, 2);
-        shape[3] = new Point(0, 3);
-        shape[4] = new Point(0, 4);
-        shape[5] = new Point(2, 0);
-        shape[6] = new Point(2, 1);
-        shape[7] = new Point(2, 2);
-        shape[8] = new Point(2, 3);
-        shape[9] = new Point(2, 4);
-        shape[10] = new Point(1, 2);
-
-        return new Shape(shape);
-    }
-
-    private static Shape generateLine(int size) {
+    public static Shape generateLine(int size) {
         Point[] shape = new Point[size];
 
         for (int i = 0; i < shape.length; i++) {
@@ -144,17 +83,35 @@ public class ShapeGenerator {
         return new Shape(shape);
     }
 
-    private static Shape generateY() {
-        Point[] shape = new Point[8];
+    public static Shape generateAlmostLine(int size, boolean left){
+        Point[] shape = new Point[size];
 
-        shape[0] = new Point(0, 0);
-        shape[1] = new Point(0, 1);
-        shape[2] = new Point(0, 2);
-        shape[3] = new Point(1, 2);
-        shape[4] = new Point(1, 3);
-        shape[5] = new Point(2, 0);
-        shape[6] = new Point(2, 1);
-        shape[7] = new Point(2, 2);
+        shape[size - 1] = new Point(0, left ? 0 : 2);
+        for (int i = 0; i < shape.length - 1; i++) {
+            shape[i] = new Point(i, 1);
+        }
+        return new Shape(shape);
+    }
+
+
+    public static Shape generateLongL(int size, boolean left)
+    {
+        int index = 0;
+        Point[] shape = new Point[size];
+        if (left){
+            System.out.println("left");
+            index = 0;
+            shape[shape.length-1] = new Point(1, shape.length-2);
+        }
+        else{
+            System.out.println("right");
+            index = 1;
+            shape[shape.length-1] = new Point(0, shape.length-2);
+        }
+
+        for (int i = 0; i < shape.length-1; i++) {
+            shape[i] = new Point(index, i);
+        }
 
         return new Shape(shape);
     }
@@ -186,56 +143,17 @@ public class ShapeGenerator {
         return new Shape(shape);
     }
 
-    private static Shape generatePlus() {
-        Point[] shape = new Point[5];
-
-        shape[0] = new Point(1, 0);
-        shape[1] = new Point(1, 1);
-        shape[2] = new Point(1, 2);
-        shape[3] = new Point(0, 1);
-        shape[4] = new Point(2, 1);
-
-        return new Shape(shape);
-    }
-
-    private static Shape generateL() {
+    public static Shape generate8Block(){
         Point[] shape = new Point[8];
 
         shape[0] = new Point(0, 0);
         shape[1] = new Point(0, 1);
         shape[2] = new Point(0, 2);
         shape[3] = new Point(0, 3);
-        shape[4] = new Point(0, 4);
-        shape[5] = new Point(0, 5);
-        shape[6] = new Point(1, 1);
-        shape[7] = new Point(1, 2);
-
-        return new Shape(shape);
-    }
-
-    private static Shape generateT() {
-        Point[] shape = new Point[5];
-
-        shape[0] = new Point(0, 0);
-        shape[1] = new Point(0, 1);
-        shape[2] = new Point(0, 2);
-        shape[3] = new Point(1, 1);
-        shape[4] = new Point(2, 1);
-
-        return new Shape(shape);
-    }
-
-    private static Shape generateTree() {
-        Point[] shape = new Point[8];
-
-        shape[0] = new Point(0, 0);
-        shape[1] = new Point(0, 1);
-        shape[2] = new Point(0, 2);
-        shape[3] = new Point(2, 0);
-        shape[4] = new Point(2, 1);
-        shape[5] = new Point(2, 2);
-        shape[6] = new Point(1, 1);
-        shape[7] = new Point(3, 1);
+        shape[4] = new Point(1, 0);
+        shape[5] = new Point(1, 1);
+        shape[6] = new Point(1, 2);
+        shape[7] = new Point(1, 3);
 
         return new Shape(shape);
     }
@@ -258,7 +176,7 @@ public class ShapeGenerator {
             shape[6] = new Point(0, 3);
             shape[7] = new Point(2, 1);
         }
-        
+
 
         return new Shape(shape);
     }
@@ -347,9 +265,9 @@ public class ShapeGenerator {
                 co_ordinate = new Point(0, 0);
                 break;
         }
-        // System.out.println("get_coordinate: " + co_ordinate);
         return co_ordinate;
     }
+
 
 
     public static Shape getFittedShape(Shape f_shape, int length, int retry) {
@@ -424,7 +342,6 @@ public class ShapeGenerator {
                 }
             }
         }
-        System.out.println("No available points");
         return null;
     }
 

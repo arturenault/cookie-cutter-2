@@ -1,6 +1,7 @@
 package cc2.g1;
 import java.util.ArrayList;
 
+
 import cc2.sim.Dough;
 import cc2.sim.Move;
 import cc2.sim.Point;
@@ -33,7 +34,7 @@ public class TopDownTillingStrategy implements ICutStrategy {
 					}
 				}
 			}
-		// return a cut randomly
+	 
 		//return a max sized cut
 		int maxShape=0;
 		int maxSize=0;

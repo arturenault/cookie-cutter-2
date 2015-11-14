@@ -11,7 +11,7 @@ class Simulator {
 
 	private static final String root = "cc2";
 
-	public static void main(String[] args)
+	public static void main(String[] args) throws Exception
 	{
 		boolean gui = false;
 		boolean gui_manual_refresh_on_cutter = false;
@@ -19,7 +19,8 @@ class Simulator {
 		String group_2 = "g0";
 		Class <Player> class_1 = null;
 		Class <Player> class_2 = null;
-		long[] timeout = new long [] {0, 0, 0};
+		long cpu_time_ms = 300 * 1000;
+		String tournament_path = null;
 		// long[] timeout = new long [] {1000, 10000, 1000};
 		long gui_refresh = 250;
 		try {
@@ -35,17 +36,13 @@ class Simulator {
 					double gui_fps = Double.parseDouble(args[a]);
 					gui_refresh = gui_fps > 0.0 ? (long) Math.round(1000.0 / gui_fps) : -1;
 					gui = true;
-				} else if (args[a].equals("--cutter-timeout")) {
+				} else if (args[a].equals("--tournament")) {
 					if (++a == args.length)
-						throw new IllegalArgumentException("Missing cutter timeout");
-					timeout[1] = Long.parseLong(args[a]);
-				} else if (args[a].equals("--cut-timeout")) {
-					if (++a == args.length)
-						throw new IllegalArgumentException("Missing cut timeout");
-					timeout[2] = Long.parseLong(args[a]);
-				} else if (args[a].equals("--gui-mrc"))
+						throw new IllegalArgumentException("Missing tournament file");
+					tournament_path = args[a];
+				} else if (args[a].equals("--gui")) gui = true;
+				else if (args[a].equals("--gui-mrc"))
 					gui = gui_manual_refresh_on_cutter = true;
-				else if (args[a].equals("--gui")) gui = true;
 				else throw new IllegalArgumentException("Unknown argument: " + args[a]);
 			class_1 = load(group_1);
 			class_2 = group_1.equals(group_2) ? class_1 : load(group_2);
@@ -55,7 +52,10 @@ class Simulator {
 			System.err.println("Exiting the simulator ...");
 			System.exit(1);
 		}
-		if (!gui)
+		if (tournament_path != null) {
+			System.out.close();
+			System.err.close();
+		} else if (!gui)
 			System.err.println("GUI: disabled");
 		else if (gui_refresh < 0)
 			System.err.println("GUI: enabled  (0 FPS)");
@@ -65,31 +65,43 @@ class Simulator {
 			double gui_fps = 1000.0 / gui_refresh;
 			System.err.println("GUI: enabled  (up to " + gui_fps + " FPS)");
 		}
-		int[] score = null;
+		int[] score = new int[] {0, 0};
+		int timeout = -1;
 		try {
-			score = play(group_1, group_2, class_1, class_2,
-			             gui, gui_manual_refresh_on_cutter,
-			             gui_refresh, timeout, 11, 8, 5);
+			timeout = play(group_1, group_2, class_1, class_2,
+			               gui, gui_manual_refresh_on_cutter,
+			               gui_refresh, cpu_time_ms, score, 11, 8, 5);
 		} catch (Exception e) {
+			if (tournament_path != null) throw e;
 			System.err.println("Exception during play: " + e.getMessage());
 			e.printStackTrace();
 			System.err.println("Exiting the simulator ...");
 			System.exit(1);
 		}
-		System.err.println("1st player scored " + score[0]);
-		System.err.println("2nd player scored " + score[1]);
+		if (tournament_path == null) {
+			System.err.println("Player " + group_1 + " scored " + score[0]);
+			System.err.println("Player " + group_2 + " scored " + score[1]);
+			if      (timeout == 0) System.err.println("1st player timed out!");
+			else if (timeout == 1) System.err.println("2nd player timed out!");
+		} else {
+			PrintStream file = new PrintStream(new FileOutputStream(tournament_path, true));
+			file.println(group_1 + "," + score[0] + "," + (timeout == 0 ? "yes" : "no") + "," +
+			             group_2 + "," + score[1] + "," + (timeout == 1 ? "yes" : "no"));
+			file.close();
+		}
 		System.exit(0);
 	}
 
-	private static int[] play(String group_1,
-	                          String group_2,
-	                          Class <Player> class_1,
-	                          Class <Player> class_2,
-	                          boolean gui,
-	                          boolean gui_manual_refresh_on_cutter,
-	                          long gui_refresh,
-	                          long[] timeout,
-	                          int ... cutter_sizes) throws Exception
+	private static int play(String group_1,
+	                        String group_2,
+	                        Class <Player> class_1,
+	                        Class <Player> class_2,
+	                        boolean gui,
+	                        boolean gui_manual_refresh_on_cutter,
+	                        long gui_refresh,
+	                        long cpu_time_ms,
+	                        int[] score,
+	                        int ... cutter_sizes) throws Exception
 	{
 		Shape[] cutters_retry = new Shape [5];
 		List <Shape> cutters_1 = new ArrayList <Shape> ();
@@ -103,13 +115,15 @@ class Simulator {
 			timer[p] = new Timer();
 			timer[p].start();
 			final Class <Player> player_class = p == 0 ? class_1 : class_2;
-			players[p] = timer[p].call(new Callable <Player> () {
+			try {
+				players[p] = timer[p].call(new Callable <Player> () {
 
-				public Player call() throws Exception
-				{
-					return player_class.newInstance();
-				}
-			}, timeout[0]);
+					public Player call() throws Exception
+					{
+						return player_class.newInstance();
+					}
+				}, cpu_time_ms);
+			} catch (TimeoutException e) { return p; }
 		}
 		// initialise GUI
 		HTTPServer server = null;
@@ -153,13 +167,21 @@ class Simulator {
 					Shape[] your_cutters = (p == 0 ? cutters_1 : cutters_2).toArray(new Shape [0]);
 					Shape[] oppo_cutters = (p == 0 ? cutters_2 : cutters_1).toArray(new Shape [0]);
 					Player player = players[p];
-					shape[p] = timer[p].call(new Callable <Shape> () {
+					long timeout_ms = 0;
+					if (cpu_time_ms > 0) {
+						long timeout_ns = cpu_time_ms * 1000000 - timer[p].time();
+						if (timeout_ns <= 0) return p;
+						timeout_ms = (timeout_ns / 1000000) + 1;
+					}
+					try {
+						shape[p] = timer[p].call(new Callable <Shape> () {
 
-						public Shape call() throws Exception
-						{
-							return player.cutter(size, your_cutters, oppo_cutters);
-						}
-					}, timeout[1]);
+							public Shape call() throws Exception
+							{
+								return player.cutter(size, your_cutters, oppo_cutters);
+							}
+						}, timeout_ms);
+					} catch (TimeoutException e) { return p; }
 					// generate shape and check if repeated
 					if (shape[p].size() != size)
 						throw new RuntimeException("Invalid cutter size");
@@ -190,7 +212,6 @@ class Simulator {
 			System.err.println("Player 2 cutter: " + cutters_2.get(c));
 		}
 		// initialize score and termination
-		int[] score = new int [2];
 		boolean[] no_cuts = new boolean [2];
 		// initialize dough
 		int dough_side = 50;
@@ -229,13 +250,22 @@ class Simulator {
 				// call the cut() method of player
 				Player player = players[p];
 				int dough_cut = dough.countCut();
-				Move cut = timer[p].call(new Callable <Move> () {
+				long timeout_ms = 0;
+				if (cpu_time_ms > 0) {
+					long timeout_ns = cpu_time_ms * 1000000 - timer[p].time();
+					if (timeout_ns <= 0) return p;
+					timeout_ms = (timeout_ns / 1000000) + 1;
+				}
+				Move cut = null;
+				try {
+					cut = timer[p].call(new Callable <Move> () {
 
-					public Move call() throws Exception
-					{
-						return player.cut(dough, your_cutters, oppo_cutters);
-					}
-				}, timeout[2]);
+						public Move call() throws Exception
+						{
+							return player.cut(dough, your_cutters, oppo_cutters);
+						}
+					}, timeout_ms);
+				} catch (TimeoutException e) { return p; }
 				// check if player cut the Dough
 				if (dough.countCut() != dough_cut)
 					throw new RuntimeException("Player cut the simulator dough");
@@ -281,7 +311,7 @@ class Simulator {
 			    	          gui_refresh, -1));
 			server.close();
 		}
-		return score;
+		return -1;
 	}
 
 	public static String state(String group_1, int score_1, long cpu_1, List <Shape> cutters_1, List <Move> cuts_1,
@@ -418,7 +448,7 @@ class Simulator {
 			if (!class_file.exists())
 				throw new FileNotFoundException("Missing class file");
 		}
-		ClassLoader loader = ToolProvider.getSystemToolClassLoader();
+		ClassLoader loader = Simulator.class.getClassLoader();
 		if (loader == null)
 			throw new IOException("Cannot find Java class loader");
 		@SuppressWarnings("rawtypes")

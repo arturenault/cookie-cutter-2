@@ -5,8 +5,6 @@ import cc2.sim.Dough;
 import cc2.sim.Move;
 import cc2.sim.Shape;
 
-import java.lang.management.ManagementFactory;
-import java.lang.management.ThreadMXBean;
 import java.util.*;
 
 /**
@@ -18,13 +16,8 @@ public class Player implements cc2.sim.Player {
     private static final int OCTOMINO = 1;
     private static final int PENTOMINO = 2;
 
-    private static ThreadMXBean bean = ManagementFactory.getThreadMXBean();
-    // Empirically observed that final move selection requires 1104000 ns. Added margin on top of that.
-    private long TIME_FOR_MOVE_SELECTION = 5000000;
-    // 1 s time limit. Max observed is 3557220000 ns.
-    private long TIME_LIMIT = 1000000000 - TIME_FOR_MOVE_SELECTION;
-
     private int cutter_attempts[] = new int[3];
+    private boolean fit_opponent;
     private long tick = -1;
     private int max_undec_moves = -1;
     private Set<Integer> attempted_octominoes = new HashSet<>();
@@ -35,23 +28,25 @@ public class Player implements cc2.sim.Player {
     private MagicDough md = new MagicDough(50, 21);
 
     private Shape undecomino(Shape cutters[], Shape oppo_cutters[]) {
-        // try to make an L
-        // make most of the L using the first 9 points
-        // *****
-        // *
-        // *
-        // *
-        // *
-        // *
-
         Point p[] = new Point[11];
+
+        // First attempt is to get a line
         if (cutter_attempts[UNDECOMINO] == 0) {
-            // troll hard, return a line
             for (int i = 0; i < 11; ++i) {
                 p[i] = new Point(0, i);
             }
             return new Shape(p);
         }
+
+        // Second attempt is a diagonal
+        if (cutter_attempts[UNDECOMINO] == 1) {
+            for(int i = 0; i < 11; ++i) {
+                p[i] = new Point(6-i/2, (i/2+i%2));
+            }
+            return new Shape(p);
+        }
+
+        // Third attempt onwards are variants on an L
         p[0] = new Point(0, 0);
 
         for (int i = 1; i < 5; ++i) {
@@ -60,30 +55,20 @@ public class Player implements cc2.sim.Player {
         }
 
         switch (cutter_attempts[UNDECOMINO]) {
-            case 1:
+            case 2:
                 // symmetric L
                 p[9] = new Point(0, 5);
                 p[10] = new Point(5, 0);
                 break;
-            case 0:
+            case 3:
                 // long i
                 p[9] = new Point(0, 5);
                 p[10] = new Point(0, 6);
                 break;
-            case 2:
+            case 4:
                 // long j
                 p[9] = new Point(5, 0);
                 p[10] = new Point(6, 0);
-                break;
-            case 3:
-                // center point and j
-                p[9] = new Point(1, 1);
-                p[10] = new Point(5, 0);
-                break;
-            case 4:
-                // center point and i
-                p[9] = new Point(1, 1);
-                p[10] = new Point(0, 5);
                 break;
             default:
                 System.err.println("Should have only had five tries");
@@ -93,16 +78,26 @@ public class Player implements cc2.sim.Player {
     }
 
     private Shape octomino(Shape cutters[], Shape oppo_cutters[]) {
-        // try to fit our undecomino
         System.out.println("Selecting octomino");
-        Shape undec = cutters[0];
+
+        int oct_id;
+        Shape undec;
+
+        // Try to fit our undecomino as first choice or if we can't get best one to match opponent's undecomino
+        if (cutter_attempts[OCTOMINO] != 1) {
+            undec = cutters[0];
+            fit_opponent = true;
+        } else { // Else attempt try to fit opponent's undecomino if we didn't get the best one of ours
+            undec = oppo_cutters[0];
+            fit_opponent = false;
+        }
+
         assert (undec != null);
 
-        int oct_id = Util.findArgMin(0, Util.ALL_OCTOMINOES.length, (idx) -> {
+        oct_id = Util.findArgMin(0, Util.ALL_OCTOMINOES.length, (idx) -> {
             if (attempted_octominoes.contains(idx)) {
                 return Integer.MAX_VALUE;
             }
-
             return -Util.evaluateTilingShape(undec, Util.getOctomino(idx), 11);
         });
 
@@ -112,12 +107,21 @@ public class Player implements cc2.sim.Player {
     }
 
     private Shape pentomino(Shape cutters[], Shape oppo_cutters[]) {
-        // try to fit their undecomino
         System.out.println("Selecting pentomino");
-        Shape undec = oppo_cutters[0];
+
+        int pent_id;
+        Shape undec;
+
+        // Attempt to fit opponent undecomino if we made our 8 fit our 11
+        if (fit_opponent) {
+            undec = oppo_cutters[0];
+        } else { // Else attempt to fit our undecomino if we made our 8 fit their 11
+            undec = cutters[0];
+        }
+
         assert (undec != null);
 
-        int pent_id = Util.findArgMin(0, Util.ALL_PENTOMINOES.length, (idx) -> {
+        pent_id = Util.findArgMin(0, Util.ALL_PENTOMINOES.length, (idx) -> {
             if (attempted_pentominoes.contains(idx)) {
                 return Integer.MAX_VALUE;
             }
@@ -153,10 +157,6 @@ public class Player implements cc2.sim.Player {
 
     @Override
     public Move cut(Dough dough, Shape[] your_cutters, Shape[] oppo_cutters) {
-        // Maintain time of computation so we don't timeout
-        long start = bean.getCurrentThreadCpuTime();
-        long stop;
-
         ++tick;
         if (tick == 0) {
             md.setCutters(your_cutters, oppo_cutters);
@@ -178,60 +178,80 @@ public class Player implements cc2.sim.Player {
             }
         } else {
 
-            List<Move> undec_moves = Util.getValidMoves(dough, new Shape[]{your_cutters[0]}, new int[]{0});
-            List<Move> oct_moves = Util.getValidMoves(dough, new Shape[]{your_cutters[1]}, new int[]{1});
-            List<Move> pent_moves = Util.getValidMoves(dough, new Shape[]{your_cutters[2]}, new int[]{2});
+            Map<Point, Set<Move>> enemy_move_lookup = new HashMap<>();
+            Map<Point, Set<Move>> move_lookup = new HashMap<>();
 
-            List<Move> all_valid_moves = new ArrayList<>();
-            all_valid_moves.addAll(undec_moves);
-            all_valid_moves.addAll(oct_moves);
-            if (undec_moves.size() < max_undec_moves / 4) {
-                all_valid_moves.addAll(pent_moves);
-            }
-
-            Map<MagicDough.Window, Long> pre_move_scores = md.scoreAllWindowsOppo();
-
-            double scores[] = new double[all_valid_moves.size()];
-
-            System.out.println("Evaluating " + all_valid_moves.size() + " valid moves...");
-
-            for (int i = 0; i < all_valid_moves.size(); ++i) {
-                Move m = all_valid_moves.get(i);
-                Point dim = Util.dimensions(your_cutters[m.shape].rotations()[m.rotation])[0];
-
-                MagicDough.Window w = md.effectWindow(m.point.i + dim.i / 2 - md.window_size / 2, m.point.j + dim.j / 2 - md.window_size / 2);
-
-                scores[i] = - pre_move_scores.get(w) - your_cutters[m.shape].size();
-
-                if (pre_move_scores.get(w) == 0) {
-                    continue;
-                }
-
-                if (md.makeMove(m, your_cutters, false)) {
-                    long score = md.countSpacesOppo(w);
-                    md.undoLastMove(your_cutters);
-                    // score should be less than pre_move_scores so this is negative
-                    scores[i] += score;
-                } else {
-                    // can't make this move
-                    scores[i] += Integer.MAX_VALUE;
-                }
-
-                // Check how we're doing in terms of CPU time remaining. Panic and break if time is tight.
-                stop = bean.getCurrentThreadCpuTime();
-                if (stop-start > TIME_LIMIT) {
-                    break;
+            for (int i = 0; i < dough.side(); ++i) {
+                for (int j = 0; j < dough.side(); ++j) {
+                    enemy_move_lookup.put(new Point(i, j), new HashSet<>());
+                    move_lookup.put(new Point(i, j), new HashSet<>());
                 }
             }
 
-            // most negative is best
-            double minscore = Long.MAX_VALUE;
-            double maxscore = Long.MIN_VALUE;
-            Move m = null;
-            for (int i = 0; i < all_valid_moves.size(); ++i) {
+            List<Move> enemy_moves = Util.getValidMoves(dough, oppo_cutters, new int[]{0, 1, 2});
+
+            for (Move m : enemy_moves) {
+                Shape s = oppo_cutters[m.shape].rotations()[m.rotation];
+                for (Point p : s) {
+                    Point pp = new Point(p.i + m.point.i, p.j + m.point.j);
+                    enemy_move_lookup.get(pp).add(m);
+                }
+            }
+
+            List<Move> moves = Util.getValidMoves(dough, your_cutters, new int[]{0, 1, 2});
+
+            for (Move m : moves) {
+                Shape s = your_cutters[m.shape].rotations()[m.rotation];
+                for (Point p : s) {
+                    Point pp = new Point(p.i + m.point.i, p.j + m.point.j);
+                    move_lookup.get(pp).add(m);
+                }
+            }
+
+            double scores[] = new double[moves.size()];
+            System.out.println("Evaluating " + moves.size() + " valid moves...");
+
+            Move m = null; // output value
+
+            for (int i = 0; i < moves.size(); ++i) {
+                m = moves.get(i);
+
+                Shape s = your_cutters[m.shape].rotations()[m.rotation];
+
+                Set<Move> blockedEnemyMoves = new HashSet<>();
+                Set<Move> blockedMoves = new HashSet<>();
+
+                for (Point p : s) {
+                    Point pp = new Point(p.i + m.point.i, p.j + m.point.j);
+
+                    blockedEnemyMoves.addAll(enemy_move_lookup.get(pp));
+                    blockedMoves.addAll(move_lookup.get(pp));
+                }
+
+                scores[i] = -s.size();
+
+                if (blockedEnemyMoves.size() == 0) {
+                    scores[i] += 10e6;
+                }
+
+                for (Move em : blockedEnemyMoves) {
+                    scores[i] -= oppo_cutters[em.shape].size();
+                }
+
+                for (Move mm : blockedMoves) {
+                    scores[i] += Math.sqrt(your_cutters[mm.shape].size());
+                }
+            }
+
+            double minscore = Double.MAX_VALUE;
+            double maxscore = Double.MIN_VALUE;
+
+            m = null;
+
+            for (int i = 0; i < moves.size(); ++i) {
                 if (scores[i] < minscore) {
                     minscore = scores[i];
-                    m = all_valid_moves.get(i);
+                    m = moves.get(i);
                 }
 
                 if (scores[i] > maxscore) {

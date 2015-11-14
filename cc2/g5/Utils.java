@@ -2,7 +2,10 @@ package cc2.g5;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
+import java.util.Set;
 
 import cc2.sim.Dough;
 import cc2.sim.Move;
@@ -112,6 +115,45 @@ public class Utils {
         centerI += move.point.i;
         centerJ += move.point.j;
         return new Point(centerI, centerJ);
+    }
+
+    public static HashMap<Integer, ArrayList<Move>> generateMovesNearOpponetMove(Dough dough, Shape[] cutters, Set<Point> points) {
+
+        HashMap<Integer, ArrayList<Move>> moveSet = new HashMap<>();
+        HashSet<Point> removableHashSet = new HashSet<Point>();
+        boolean tmp = false;
+        for (Point p : points) {
+            for (int shapeNumber = 0; shapeNumber < cutters.length; shapeNumber++) {
+                Shape[] rotations = cutters[shapeNumber].rotations();
+                ArrayList<Move> moves = new ArrayList<>();
+                for (int rotNumber = 0; rotNumber < rotations.length; rotNumber++) {
+                    Shape tryShape = rotations[rotNumber];
+                    if (dough.cuts(tryShape, p)) {
+                        moves.add(new Move(shapeNumber, rotNumber, p));
+                        tmp = true;
+                    }
+                }
+                moveSet.put(cutters[shapeNumber].size(), moves);
+            }
+            if (!tmp) {
+                removableHashSet.add(p);
+            }
+            if (moveSet.size() > 0) {
+                break;
+            }
+        }
+        points.removeAll(removableHashSet);
+
+        return moveSet;
+    }
+
+    public static int calDiffWithWeight(HashMap<Integer, ArrayList<Move>> before, HashMap<Integer, ArrayList<Move>> after) {
+        int[] nums = {11, 8, 5};
+        int count = 0;
+        for (int n : nums) {
+            count += (before.get(n).size() - after.get(n).size()) * n;
+        }
+        return count;
     }
 
 }

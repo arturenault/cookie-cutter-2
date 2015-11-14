@@ -27,14 +27,14 @@ public class TournamentRunAgainstAllPlayers {
 				BufferedOutputStream(new FileOutputStream("RunAgainstAll_"+tournamentId+".bat"));
 		System.setOut(new PrintStream(fileRedirect));
 		System.out.println("	mkdir .\\output\\"+ tournamentId );	
-		for(int round=1;round<=5;round++){
+		for(int round=1;round<=1;round++){
 			for(int i=1;i<=9;i++){
-				for(int j=1;j<=9;j++){
+				for(int j=i+1;j<=9;j++){
 					if(i==j){
 						continue;
 					}
 					
-					String command="\"C:\\Program Files\\Java\\jdk1.8.0_60\\bin\\java\" cc2.sim.Simulator --groups g"+ i +" g"+ j +" -o1 \".\\output\\"+tournamentId+"\\"+tournamentId+"_"+ round+"\" -i " + gameId;
+					String command="\"C:\\Program Files\\Java\\jdk1.8.0_60\\bin\\java\" cc2.sim.Simulator --groups g"+ i +" g"+ j +" -o1 \".\\output\\"+tournamentId+"\\"+tournamentId+"_"+ round+"\" -i 11D_8Box_L__DS" + gameId;
 					System.out.println(command);
 					//executeRun(command);
 					gameId+=1;

@@ -18,7 +18,7 @@ public class Player implements cc2.sim.Player {
 	private int firstTry11 = 0;
 	private int firstTry8 = 0;
 	private int firstTry5 = 0;
-	public int countDestruct = 18;
+	public int countDestruct = 0;
 
 	private boolean defensive = false;
 	
@@ -59,10 +59,19 @@ public class Player implements cc2.sim.Player {
 		///////// 11 shape //////////
 		if (length == 11)
 		{
+			System.out.println("11try = " +firstTry11);
 			int half;
 			switch(firstTry11)
 			{
-			case 0: 
+			case 0:
+				cutter = get11StraightShape();
+				firstTry11++;
+				break;
+			case 1:
+				cutter = get11HockeyShape_2();
+				firstTry11++;
+				break;
+			case 2: 
 				half = length / 2+1;
 				for(int i=0; i<length; i++)
 				{
@@ -71,7 +80,7 @@ public class Player implements cc2.sim.Player {
 				}
 				firstTry11++;
 				break;
-			case 1:
+			case 3:
 				half = length / 2 ;
 				for(int i=0; i<length; i++)
 				{
@@ -80,7 +89,7 @@ public class Player implements cc2.sim.Player {
 				}
 				firstTry11++;
 				break;
-			case 2:
+			case 4:
 				half = length / 2 ;
 				for(int i=0; i<length; i++)
 				{
@@ -94,36 +103,28 @@ public class Player implements cc2.sim.Player {
 		///////// 8 shape //////////
 		if (length == 8)
 		{
-			if (firstTry8 == 0)
+			System.out.println("8try = " +firstTry8);
+			switch(firstTry8)
 			{
-				for(int i=0; i<length; i++)
-					if (i<4) cutter[i] = new Point(i,0);
-					else cutter[i] = new Point(i-3,1);
-				firstTry8++;
-			}
-			else
-			{
-				switch(firstTry8)
-				{
+				// the misaligned 2x4
+				case 0:
+					cutter = Utils.get8Shape("8aligned2x4");
+					firstTry8++;
+					break;
 				case 1: 
-					for(int i=0; i<length; i++)
-					if (i<5) cutter[i] = new Point(i,0);
-					else cutter[i] = new Point(i-5,1);
+					cutter = Utils.get8Shape("8line");
 					firstTry8++;
 					break;
 				case 2:
-					for(int i=0; i<length; i++)
-					if (i<5) cutter[i] = new Point(i,0);
-					else cutter[i] = new Point(i-4,1);
+					cutter = Utils.get8Shape("8misAligned2x4");
 					firstTry8++;
 					break;
 				case 3:
-					for(int i=0; i<length; i++)
-					if (i<5) cutter[i] = new Point(i,0);
-					else cutter[i] = new Point(i-3,1);
+					cutter = Utils.get8Shape("8diag");
 					firstTry8++;
 					break;
-				}
+				case 4:
+					// huh?
 			}
 		}
 		///////// 5 shape //////////
@@ -140,8 +141,7 @@ public class Player implements cc2.sim.Player {
 				}
 				else{
 					for (int i = 0 ; i != cutter.length ; ++i)
-						cutter[i] = new Point(i, 0);
-					
+						cutter[i] = new Point(i, 0);	
 				}
 
 				row_2 = new boolean [cutter.length - 1];
@@ -173,17 +173,21 @@ public class Player implements cc2.sim.Player {
 					// System.out.println(cutter[i].i + ", " + cutter[i].j );
 				}
 				firstTry5++;
-			} else {
-				// pick a random cell from 2nd row but not same
-				int i;
-				do {
-					i = 1 + gen.nextInt(1);
-				} while (row_2[i]);
-				row_2[i] = true;
-				cutter[cutter.length - 1] = new Point(i, 1);
-				for (i = 0 ; i != cutter.length - 1 ; ++i)
-					cutter[i] = new Point(i, 0);
+			} else if(firstTry5 == 3){
+				cutter[0] = new Point(0,0);
+				cutter[1] = new Point(1,0);
+				cutter[2] = new Point(2,0);
+				cutter[3] = new Point(0,1);
+				cutter[4] = new Point(1,1);
 				firstTry5++;
+			}
+			else{
+				cutter[0] = new Point(0,0);
+				cutter[1] = new Point(1,0);
+				cutter[2] = new Point(2,0);
+				cutter[3] = new Point(2,1);
+				cutter[4] = new Point(1,1);
+				firstTry5++;				
 			}
 		}
 		System.out.println();
@@ -297,6 +301,7 @@ public class Player implements cc2.sim.Player {
 			// must call getLastOppPoints before updateBoardMyMove
 			lastOppPoints = getLastOppPoints(dough);
 			oppMoves.add(lastOppPoints);
+			// System.out.println("returnMove.rotation + returnMove.shape + returnMove.point" + returnMove.rotation + returnMove.shape + returnMove.point);
 			lastMovePoints = updateBoardMyMove(shapes, returnMove);
 			
 		}
@@ -575,13 +580,17 @@ public class Player implements cc2.sim.Player {
                 	// at this point could be opp or self.
                 		board[i][j] = true;
                 		boolean isOpp = true;
-                		for(Point p: lastMovePoints) {
-                			if(p.i == j && p.j ==i) {
-                				isOpp = false;
-                				break;
-                			}
-                		}
-                		if (isOpp ==true ) {
+	                	if(lastMovePoints != null) {
+	                		for(Point p: lastMovePoints) {
+	                			if(p.i == j && p.j ==i) {
+	                				isOpp = false;
+	                				break;
+	                			}
+	                		}
+	                		if (isOpp ==true ) {
+	                			lastOppPts.add(new Point(i, j));
+	                		}
+                		} else {
                 			lastOppPts.add(new Point(i, j));
                 		}
                 }
@@ -589,7 +598,7 @@ public class Player implements cc2.sim.Player {
         }
         // System.out.println("---------------- lastOppPts length" + lastOppPts.size());
         // printAL(lastOppPts);
-        //System.out.println("NEXT MOVE.");
+        // System.out.println("NEXT MOVE.");
         
         // if opponent didn't move last move, return null
         return lastOppPts;
@@ -626,5 +635,60 @@ public class Player implements cc2.sim.Player {
     	}
     	return null;
     }
+
+    public Point[] get11StraightShape(){
+		Point[] cutter = new Point [11];
+		for(int i = 0; i < 11; i++) {
+			cutter[i] = new Point(0, i);			
+		}
+		
+		return cutter;    	
+    }
+    
+    public Point[] get11HockeyShape_1(){
+		Point[] cutter = new Point [11];
+		for(int i = 0; i < 11; i++) {
+			if(i == 10){
+				cutter[i] = new Point(1,0);
+			}
+			else{
+				cutter[i] = new Point(0, i);				
+			}
+		}
+		
+		return cutter;    	
+    }
+
+    public Point[] get11HockeyShape_2(){
+		Point[] cutter = new Point [11];
+		for(int i = 0; i < 11; i++) {
+			if(i == 10){
+				cutter[i] = new Point(1,9);
+			}
+			else{
+				cutter[i] = new Point(0, i);				
+			}
+		}
+		
+		return cutter;
+    }
+
+    public Point[] get11Diagonal(){
+		Point[] cutter = new Point [11];
+		cutter[0] = new Point(0, 0);
+		cutter[1] = new Point(0, 1);
+		cutter[2] = new Point(1, 1);
+		cutter[3] = new Point(1, 2);
+		cutter[4] = new Point(2, 2);
+		cutter[5] = new Point(2, 3);
+		cutter[6] = new Point(3, 3);
+		cutter[7] = new Point(3, 4);
+		cutter[8] = new Point(4, 4);
+		cutter[9] = new Point(4, 5);
+		cutter[10] = new Point(5, 5);
+		
+		return cutter;
+    }
+
 
 }

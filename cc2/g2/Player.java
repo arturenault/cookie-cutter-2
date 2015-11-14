@@ -15,11 +15,15 @@ public class Player implements cc2.sim.Player {
 	
 	public Shape cutter(int length, Shape[] shapes, Shape[] opponent_shapes)
 	{
-		return ShapeFactory.getNext(length);
+		return ShapeFactory.getNext(length, opponent_shapes);
 	}
 	
 	protected static void tileDiagonal() {
 		tileStraight = false;
+	}
+	
+	protected static void tileStraight() {
+		tileStraight = true;
 	}
 	
 	private int getConvexHullMinSide(Shape eleven) {
@@ -118,10 +122,13 @@ public class Player implements cc2.sim.Player {
 //				}
 //			}
 			
+			int[] offsets = {0, 4, 2, 6};
+			
 			for(int ri = 0; ri < rotations.length; ri += 2) {
-				for(int inc = 7; inc > 0; --inc) {
-					if(inc < 7) inc = 1;
-					for(int j = 0; j < 2*dough.side(); j += inc) {
+				int inc = 8;
+				for(int offset_i = 0; offset_i < offsets.length; ++offset_i) {
+					int off = offsets[offset_i];
+					for(int j = off; j < 2*dough.side(); j += inc) {
 						for(int i = Math.max(0, j-dough.side()); j-i >= 0; i += 1) {
 							Point p = new Point(i, j-i);
 							Shape s = rotations[ri];
@@ -196,7 +203,7 @@ public class Player implements cc2.sim.Player {
 		return moves.get(gen.nextInt(moves.size()));
 	}
 	
-	private int getHookType(Shape eleven) {
+	static int getHookType(Shape eleven) {
 		Point hook = null;
 		for(Point p : eleven) {
 			if(p.j > 1)

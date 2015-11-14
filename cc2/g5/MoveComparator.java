@@ -27,7 +27,6 @@ public class MoveComparator implements Comparator<MoveCosts> {
         return o1.cost > o2.cost ? 1 : -1;
     }
 
-    // Input required: Current dough, move to be made, set of all shapes(by opponent/ours) depending on the one we are computing for
     public int getOptMove(Move move, Shape[] shapes, Dough dough) {
         ModdableDough curr_dough = new ModdableDough(dough);
         ModdableDough cut_dough = cut_with_move(curr_dough, move, shapes);
